@@ -1,0 +1,23 @@
+
+Let fact(x){
+    Assuming_that(x == 1){
+        Return 1;
+    }Otherwise{ 
+        Return x*fact(x-1);
+    }
+}
+
+Let main (){
+    Let x = Read;
+    Write(fact(x));
+
+    Let res = 1;
+    While(x > 1){
+        res *= x;
+        x -= 1;
+    }
+    Write(res);
+
+}
+
+

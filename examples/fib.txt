@@ -1,0 +1,21 @@
+
+Let fib(x){
+    Assuming_that(x == 1){
+        Return 1;
+    }
+
+    Assuming_that(x == 2){
+        Return 1;
+    }
+
+    Return fib(x-1) + fib(x-2);
+
+}
+
+Let main (){
+    Let x = Read;
+    Write(fib(x));
+
+}
+
+

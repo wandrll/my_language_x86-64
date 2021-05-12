@@ -1,0 +1,14 @@
+Let main(){
+    Window;
+    Let x = -12.5;
+
+    While(x < 12.5){
+        Let currx = x * 20;
+        Let curry = Sin(x) * 80;
+        Pixel(currx, curry, 3294967295);
+        x+=0.01;
+
+    }
+        Redraw;
+
+}

@@ -1,0 +1,53 @@
+
+Let discr_sqare(a, b, c){
+    Return b*b - 4*a*c;
+}
+
+Let linear_equation(b, c){
+    Assuming_that(b == 0){
+        Assuming_that(c==0){
+            Return 1/0;
+        }Otherwise{
+            Return 0;
+        }
+    }Otherwise{
+        Write(-c/b);
+        Return 1;
+    }
+}
+
+
+Let solve_equation(a, b, c){
+
+    Assuming_that(a == 0){
+        Return linear_equation(b,c);
+    }Otherwise{
+
+        Let Disc = discr_sqare(a, b, c);
+        Assuming_that(Disc < 0){
+            Return 0;
+        }
+
+        Assuming_that(Disc == 0){
+            Write(-b/(2*a));
+            Return 1;
+        }
+
+        Assuming_that(Disc > 0){
+            Write((-b + (Sqrt(Disc)))/(2*a));
+            Write((-b - (Sqrt(Disc)))/(2*a));
+
+            Return 2;
+        }
+
+
+    }
+}
+
+
+Let main(){
+    Write(solve_equation(Read, Read, Read));
+
+}
+
+

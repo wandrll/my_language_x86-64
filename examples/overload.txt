@@ -1,0 +1,24 @@
+Let sum(a,b,c,d){
+    Return a+b+c+d;
+}
+
+Let sum(a,b,c){
+    Return a+b+c;
+}
+
+Let sum(a,b){
+    Return a+b;
+}
+
+
+Let main(){
+    Let a = Read;
+    Let b = Read;
+    Let c = Read;
+    Let d = Read;
+
+    Write(sum(a,b,c,d), sum(a,b,c), sum(a,b));
+
+}
+
+
