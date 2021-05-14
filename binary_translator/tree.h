@@ -12,24 +12,54 @@
 
 const long long maximum_of_fractional_part = 16777216; //24 bit meaning 2^24
 
+
+const int register_count = 8;
 enum Registers{
-    RAX,
-    RBX,
-    RCX,
-    RDX,
-    RSP,
-    RBP,
-    RDI,
-    RSI,
-    R9,
-    R10,
-    R11,
-    R12,
-    R13,
-    R14,
-    R15
+    RAX = 0x00,
+    RCX = 0x01,
+    RDX = 0x02,
+    RBX = 0x03,
+    RSP = 0x04,
+    RBP = 0x05,
+    RSI = 0x06,  
+    RDI = 0x07
 };
 
+enum Stack_opcodes{
+    PUSH = 0x50,
+    POP  = 0x58
+};
+
+enum Call_opcodes{
+    RET = 0xc3,
+    CALL = 0xe8
+};
+
+enum Mov_opcodes{
+    MOV_RR = 0x8948,
+    MOV_MR = 0x8948,
+    MOV_RM = 0x8b48,
+    MOV_RI = 0x48
+};
+
+enum Add_opcodes{
+    ADD_RR = 0x0148,
+    ADD_RI = 0x8148  
+};
+
+enum Sub_opcodes{
+    SUB_RR = 0x2948,
+    SUB_RI = 0x8148
+};
+
+enum Math_opcodes{
+    IDIV = 0xf748, 
+    IMUL = 0xf748   //11101000
+};
+
+enum Logic_opcodes{
+    XOR_RR = 0x3148
+};
 
 enum Node_type{
     GARBAGE = 0,
@@ -193,6 +223,9 @@ struct AST_tree{
     private:
     List<Tree_Node>* list;
     List<char*>* generated_labels;
+
+    List<char*>* prts_for_free;
+
 
     char* jit_buffer;
 
@@ -435,32 +468,46 @@ struct AST_tree{
 
     void x86_fill_labels();
 
-    void fill_x_bytes(int x, long long a, char* line);
+    void fill_x_bytes(int x, int64_t a, char* line);
 
     size_t x86_load_printf(char* line);
 
     size_t x86_load_scanf(char* line);
 
+    void x86_generate_label_call(AST_tree::Tree_Node node, char* line);
 
-    size_t x86_gen_push(char* line, Registers reg);
+    
+////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////EMIT MACHINE CODE IN BUFFER//////////////////////
+    
+    size_t x86_emit_push(char* line, Registers reg);
+    size_t x86_emit_pop(char* line, Registers reg);
 
-    size_t x86_gen_pop(char* line, Registers reg);
+    size_t x86_emit_ret(char* line);
+    size_t x86_emit_call(char* line);
 
-    size_t x86_gen_ret(char* line);
 
-    size_t x86_gen_call(char* line);
+    size_t x86_emit_mov_r64_r64(char* line, Registers reg1, Registers reg2);
+    size_t x86_emit_mov_mem_r64(char* line, Registers mem_reg, int32_t mem_off, Registers src_reg);
+    size_t x86_emit_mov_r64_mem(char* line,  Registers src_reg, Registers mem_reg, int32_t mem_off);    
+    size_t x86_emit_mov_r64_imm(char* line, Registers reg, int64_t value);
 
-    size_t x86_gen_mov_rbp_rsp(char* line);//    = mov rbp, rsp
+    size_t x86_emit_add_r64_r64(char* line, Registers reg1, Registers reg2);
+    size_t x86_emit_add_r64_imm(char* line, Registers reg1, int32_t value);
+ 
+    size_t x86_emit_sub_r64_r64(char* line, Registers reg1, Registers reg2);
+    size_t x86_emit_sub_r64_imm(char* line, Registers reg1, int32_t value);
 
-    size_t x86_gen_mov_rsp_rbp(char* line);//    = mov rsp, rbp
 
-    size_t x86_gen_mov_var_rax(char* line, int var_offset);//    = mov [rbp + var_offset], rax
+    size_t x86_emit_imul_r64(char* line, Registers reg1);
+    size_t x86_emit_idiv_r64(char* line, Registers reg1);
+ 
 
-    size_t x86_gen_sub_rsp_8(char*line);
+    size_t x86_emit_xor_r64_r64(char* line, Registers reg1, Registers reg2);
+    // size_t x86_gen_xor_rdx_rdx(char* line);
 
-    size_t x86_gen_mov_rax_const(char* line, long long value);
-
-    size_t x86_gen_mov_rdi_rax(char* line);
+    
+    
 
 };
 

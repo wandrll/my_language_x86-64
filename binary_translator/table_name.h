@@ -3,7 +3,6 @@
 #include <cassert>
 #include <stdlib.h>
 #include "../list/list.hpp"
-#include "../stack/stack.hpp"
 #include <sys/stat.h>
 #include <ctype.h>
 #include <string.h>

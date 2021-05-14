@@ -2,210 +2,239 @@
 
 
 
-size_t AST_tree::x86_gen_push(char* line, Registers reg){
-    switch(reg){
-        case RAX:{
-            memcpy(line,"\x50", 1);
-            return 1;
-        }
-        case RBX:{
-            memcpy(line,"\x53", 1);
-            return 1;
-        }
-        case RCX:{
-            memcpy(line,"\x51", 1);
-            return 1;
-        }
-        case RDX:{
-            memcpy(line,"\x52", 1);
-            return 1;
-        }
-        case RSP:{
-            memcpy(line,"\x54", 1);
-            return 1;
-        }
-        case RBP:{
-            memcpy(line,"\x55", 1);
-            return 1;
-        }
-        case RDI:{
-            memcpy(line,"\x57", 1);
-            return 1;
-        }
-        case RSI:{
-            memcpy(line,"\x56", 1);
-            return 1;
-        }
-        case R9:{
-            memcpy(line,"\x41\x51", 2);
-            return 2;
-        }
-        case R10:{
-            memcpy(line,"\x41\x52", 2);
-            return 2;
-        }
-        case R11:{
-            memcpy(line,"\x41\x53", 2);
-            return 2;
-        }
-        case R12:{
-            memcpy(line,"\x41\x54", 2);
-            return 2;
-        }
-        case R13:{
-            memcpy(line,"\x41\x55", 2);
-            return 2;
-        }
-        case R14:{
-            memcpy(line,"\x41\x56", 2);
-            return 2;
-        }
-        case R15:{
-            memcpy(line,"\x41\x57", 2);
-            return 2;
-        }            
+size_t AST_tree::x86_emit_push(char* line, Registers reg){
+    assert(reg < register_count);
 
-    }
-
-    printf("Unknown register\n");
-    assert(0);
-    return -1;
-}
-
-
-
-
-
-size_t AST_tree::x86_gen_pop(char* line, Registers reg){
-    switch(reg){
-        case RAX:{
-            memcpy(line,"\x58", 1);
-            return 1;
-        }
-        case RBX:{
-            memcpy(line,"\x5b", 1);
-            return 1;
-        }
-        case RCX:{
-            memcpy(line,"\x59", 1);
-            return 1;
-        }
-        case RDX:{
-            memcpy(line,"\x5a", 1);
-            return 1;
-        }
-        case RSP:{
-            memcpy(line,"\x5c", 1);
-            return 1;
-        }
-        case RBP:{
-            memcpy(line,"\x5d", 1);
-            return 1;
-        }
-        case RDI:{
-            memcpy(line,"\x5f", 1);
-            return 1;
-        }
-        case RSI:{
-            memcpy(line,"\x5e", 1);
-            return 1;
-        }
-        case R9:{
-            memcpy(line,"\x41\x59", 2);
-            return 2;
-        }
-        case R10:{
-            memcpy(line,"\x41\x5a", 2);
-            return 2;
-        }
-        case R11:{
-            memcpy(line,"\x41\x5b", 2);
-            return 2;
-        }
-        case R12:{
-            memcpy(line,"\x41\x5c", 2);
-            return 2;
-        }
-        case R13:{
-            memcpy(line,"\x41\x5d", 2);
-            return 2;
-        }
-        case R14:{
-            memcpy(line,"\x41\x5e", 2);
-            return 2;
-        }
-        case R15:{
-            memcpy(line,"\x41\x5f", 2);
-            return 2;
-        }            
-
-    }
-
-    printf("Unknown register\n");
-    assert(0);
-    return -1;
-}
-
-
-
-size_t AST_tree::x86_gen_ret(char* line){
-    *line = 0xc3;
+    *line = (PUSH + reg);
     return 1;
 }
 
-size_t AST_tree::x86_gen_call(char* line){
-    *line = 0xe8;
+
+
+size_t AST_tree::x86_emit_pop(char* line, Registers reg){
+    assert(reg < register_count);
+
+    *line = (POP + reg);
+    return 1;
+}
+
+
+
+size_t AST_tree::x86_emit_ret(char* line){
+    *line = RET;
+    return 1;
+}
+
+size_t AST_tree::x86_emit_call(char* line){
+    *line = CALL;
     return 5;
 }
 
+size_t AST_tree::x86_emit_mov_r64_r64(char* line, Registers reg1, Registers reg2){
+    assert(reg1 < register_count && reg2 < register_count);
 
-size_t AST_tree::x86_gen_mov_rbp_rsp(char* line){ //    = mov rbp, rsp
-    memcpy(line, "\x48\x89\xe5", 3);
+    u_int16_t mov_op = MOV_RR;
+    
+    * line      = *(( u_int8_t*)(&mov_op));
+    *(line + 1) = *(((u_int8_t*)(&mov_op)) + 1);
+
+
+    u_int8_t byte = (0b11000000) | reg1 | (reg2 << 3);
+
+    *(line + 2) = byte;
+
     return 3;
 }
 
-size_t AST_tree::x86_gen_mov_rsp_rbp(char* line){ //    = mov rsp, rbp
-    memcpy(line, "\x48\x89\xec", 3);
-    return 3;
-}
 
-void AST_tree::fill_x_bytes(int x, long long a, char* line){
+
+void AST_tree::fill_x_bytes(int x, int64_t a, char* line){
     for(int j = 0; j < x; j++){
         *(line + j) = *(((char*)(&a)) + j);
     }
 }
 
 
-size_t AST_tree::x86_gen_mov_var_rax(char* line, int var_offset){ //    = mov [rbp + var_offset], rax
-    size_t offset = 0;
-    memcpy(line, "\x48\x89\x85", 3);
-    offset += 3;
-                                                //    = mov [rbp + var_offset], rax
-    fill_x_bytes(4, var_offset, line + offset);    //   
-    offset += 4;  
+size_t AST_tree::x86_emit_mov_mem_r64(char* line, Registers mem_reg, int32_t mem_off, Registers src_reg){
+    assert(mem_reg < register_count && src_reg < register_count);
 
-    return offset;
+    u_int16_t mov_op = MOV_MR;
+    
+    * line      = *(( u_int8_t*)(&mov_op));
+    *(line + 1) = *(((u_int8_t*)(&mov_op)) + 1);
+
+
+    u_int8_t byte = (0b10000000) | mem_reg | (src_reg << 3);
+
+    *(line + 2) = byte;
+
+    fill_x_bytes(4, mem_off, line + 3);
+
+    return 7;
+
 }
 
 
-size_t AST_tree::x86_gen_sub_rsp_8(char*line){//        = sub rsp, 8
-    memcpy(line, "\x48\x83\xec\x08", 4);
-    return 4;
+size_t AST_tree::x86_emit_mov_r64_mem(char* line,  Registers src_reg, Registers mem_reg, int32_t mem_off){
+    assert(mem_reg < register_count && src_reg < register_count);
+
+    u_int16_t mov_op = MOV_RM;
+    
+    * line      = *(( u_int8_t*)(&mov_op));
+    *(line + 1) = *(((u_int8_t*)(&mov_op)) + 1);
+
+
+    u_int8_t byte = (0b10000000) | mem_reg | (src_reg << 3);
+
+    *(line + 2) = byte;
+
+    fill_x_bytes(4, mem_off, line + 3);
+
+    return 7;
+
 }
 
-size_t AST_tree::x86_gen_mov_rax_const(char* line, long long value){//  mov rax, number
-    size_t offset = 0;
+size_t AST_tree::x86_emit_mov_r64_imm(char* line, Registers reg, int64_t value){
+    assert(reg < register_count);
 
-    memcpy(line + offset, "\x48\xb8", 2);
-    offset += 2;
+    
+    u_int8_t mov_op = MOV_RI;
+    
+    * line      = *(( u_int8_t*)(&mov_op));
 
-    fill_x_bytes(8, value, line + offset);
-    offset += 8;
+    u_int8_t byte = (0b10111000) | reg ;
 
-    return offset;
+    *(line + 1) = byte;
+
+    fill_x_bytes(8, value, line + 2);
+
+    return 10;
 }
 
-size_t AST_tree::x86_gen_mov_rdi_rax(char* line){                //mov rdi, rax
-    memcpy(line, "\x48\x89\xC7", 3);
+size_t AST_tree::x86_emit_add_r64_r64(char* line, Registers reg1, Registers reg2){
+    assert(reg1 < register_count && reg2 < register_count);
+
+    u_int16_t mov_op = ADD_RR;
+    
+    * line      = *(( u_int8_t*)(&mov_op));
+    *(line + 1) = *(((u_int8_t*)(&mov_op)) + 1);
+
+
+    u_int8_t byte = (0b11000000) | reg1 | (reg2 << 3);
+
+    *(line + 2) = byte;
+
     return 3;
 }
+
+
+size_t AST_tree::x86_emit_add_r64_imm(char* line, Registers reg, int32_t value){
+    assert(reg < register_count);
+
+    
+    u_int16_t mov_op = ADD_RI;
+    
+    * line      = *(( u_int8_t*)(&mov_op));
+    *(line + 1) = *(((u_int8_t*)(&mov_op)) + 1);
+
+    u_int8_t byte = (0b11000000) | reg ;
+
+    *(line + 2) = byte;
+
+    fill_x_bytes(4, value, line + 3);
+
+    return 7;
+}
+
+
+size_t AST_tree::x86_emit_sub_r64_r64(char* line, Registers reg1, Registers reg2){
+    assert(reg1 < register_count && reg2 < register_count);
+
+    u_int16_t mov_op = SUB_RR;
+    
+    * line      = *(( u_int8_t*)(&mov_op));
+    *(line + 1) = *(((u_int8_t*)(&mov_op)) + 1);
+
+
+    u_int8_t byte = (0b11000000) | reg1 | (reg2 << 3);
+
+    *(line + 2) = byte;
+
+    return 3;
+}
+
+
+
+size_t AST_tree::x86_emit_sub_r64_imm(char* line, Registers reg1, int32_t value){
+    assert(reg1 < register_count);
+
+    u_int16_t mov_op = SUB_RI;
+    
+    * line      = *(( u_int8_t*)(&mov_op));
+    *(line + 1) = *(((u_int8_t*)(&mov_op)) + 1);
+
+
+    u_int8_t byte = (0b11101000) | reg1 ;
+
+    *(line + 2) = byte;
+
+    fill_x_bytes(4, value, line + 3);
+
+    return 7;
+}
+
+
+
+size_t AST_tree::x86_emit_xor_r64_r64(char* line, Registers reg1, Registers reg2){
+    assert(reg1 < register_count && reg2 < register_count);
+
+    u_int16_t mov_op = XOR_RR;
+    
+    * line      = *(( u_int8_t*)(&mov_op));
+    *(line + 1) = *(((u_int8_t*)(&mov_op)) + 1);
+
+
+    u_int8_t byte = (0b11000000) | reg1 | (reg2 << 3);
+
+    *(line + 2) = byte;
+
+    return 3;     
+}
+
+
+size_t AST_tree::x86_emit_imul_r64(char* line, Registers reg1){
+    assert(reg1 < register_count);
+
+    u_int16_t mov_op = IMUL;
+    
+    * line      = *(( u_int8_t*)(&mov_op));
+    *(line + 1) = *(((u_int8_t*)(&mov_op)) + 1);
+
+
+    u_int8_t byte = (0b11101000) | reg1 ;
+
+    *(line + 2) = byte;
+
+
+    return 3;
+}
+
+
+
+size_t AST_tree::x86_emit_idiv_r64(char* line, Registers reg1){
+    assert(reg1 < register_count);
+
+    u_int16_t mov_op = IDIV;
+    
+    * line      = *(( u_int8_t*)(&mov_op));
+    *(line + 1) = *(((u_int8_t*)(&mov_op)) + 1);
+
+
+    u_int8_t byte = (0b11111000) | reg1 ;
+
+    *(line + 2) = byte;
+
+
+    return 3;
+}
+

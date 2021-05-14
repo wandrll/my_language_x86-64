@@ -106,7 +106,7 @@ add_power_loop:
 end:
 
             shl rax, fix_size                   ;
-            mov r9, 100000000000                ;
+            mov r9, 10000000000                ;
             div r9                              ;Make fixed-precision number
                                                 ;
             add rax, r10                        ;
@@ -247,7 +247,7 @@ Calculate_10_loop:
 
             push rcx                        ;
             mov r9, rcx                     ;
-            mov rcx, 7                      ;
+            mov rcx, 8                      ;
             sub rcx, r9                     ;
             je End_add_zeors_loop           ;
 Add_zeros_loop:                             ;

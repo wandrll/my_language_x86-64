@@ -2,7 +2,6 @@
 #include <cassert>
 #include <stdlib.h>
 #include "../list/list.hpp"
-#include "../stack/stack.hpp"
 #include "table_name.h"
 #include <sys/stat.h>
 #include <ctype.h>
