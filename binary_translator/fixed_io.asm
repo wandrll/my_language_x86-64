@@ -168,6 +168,7 @@ print_decimal:
             push rbp
             mov rbp, rsp
 
+            xor PRINT_SIZE, PRINT_SIZE
             mov rbx, 1                      ;
             shl rbx, 63                     ;
             and rbx, rax                    ;    
@@ -222,7 +223,7 @@ Calculate_10_loop:
 
             mov rax, r10                    ;
             xor rdx, rdx                    ;
-            mov r9, 10000000000             ;
+            mov r9, 100000000             ;
             mul r9                          ;
             shr rax, fix_size               ;
                                             ;
@@ -246,7 +247,7 @@ Calculate_10_loop:
 
             push rcx                        ;
             mov r9, rcx                     ;
-            mov rcx, 9                      ;
+            mov rcx, 7                      ;
             sub rcx, r9                     ;
             je End_add_zeors_loop           ;
 Add_zeros_loop:                             ;

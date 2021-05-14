@@ -19,6 +19,10 @@ void AST_tree::destructor(){
     list->destructor();
     free(list);
     this->list = NULL;
+    if(this->jit_buffer){
+        free(this->jit_buffer);
+        this->jit_buffer = NULL;
+    }
 }
 
 void AST_tree::build_AST(){

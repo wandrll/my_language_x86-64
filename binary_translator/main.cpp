@@ -13,23 +13,31 @@ int main(const int argc, const char** argv){
     tree.build_AST();
 
     if(argc == 2){
-        tree.create_nasm_file(default_name);
+        tree.JIT_compile();
+        tree.execute_JIT_compiled_buffer();
     }else{
         if(argv[2][0] == '-'){
-            tree.create_nasm_file(default_name);
             tree.dump_tree("result.pdf");
+
+            tree.JIT_compile();
+            tree.execute_JIT_compiled_buffer();
+
         }else{
-            tree.create_nasm_file(argv[2]);
             if(argc == 4 && argv[3][0] == '-'){
                 tree.dump_tree("result.pdf");
             }
+
+            tree.JIT_compile();
+            tree.execute_JIT_compiled_buffer();
+
         }
     }
-
+    printf("Executed succesfully\n");
+    // tree.create_nasm_file("a.asm");
     tree.destructor();
-    system("nasm -f elf64 a.asm");
+    // system("nasm -f elf64 a.asm");
     // system("nasm -f elf64 binary_translator/printf.asm");
-    system("nasm -f elf64 binary_translator/fixed_io.asm");
+    // system("nasm -f elf64 binary_translator/fixed_io.asm");
 
-    system("ld -s a.o binary_translator/fixed_io.o -o executable");
+    // system("ld -s a.o binary_translator/fixed_io.o -o executable");
 }

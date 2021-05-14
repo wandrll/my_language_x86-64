@@ -8,8 +8,28 @@
 #include <ctype.h>
 #include <string.h>
 #include "table_name.h"
+#include "../hash_map/hash_map.hpp"
 
 const long long maximum_of_fractional_part = 16777216; //24 bit meaning 2^24
+
+enum Registers{
+    RAX,
+    RBX,
+    RCX,
+    RDX,
+    RSP,
+    RBP,
+    RDI,
+    RSI,
+    R9,
+    R10,
+    R11,
+    R12,
+    R13,
+    R14,
+    R15
+};
+
 
 enum Node_type{
     GARBAGE = 0,
@@ -148,7 +168,12 @@ struct AST_tree{
     };
 
     void create_assemble_file(const char* file);
+
+    void JIT_compile();
     void create_nasm_file(const char* file);
+
+    void execute_JIT_compiled_buffer();
+
     void destructor();
     void lexical_analysis(const char* file);
     void dump_list(const char* file);
@@ -167,8 +192,19 @@ struct AST_tree{
 
     private:
     List<Tree_Node>* list;
+    List<char*>* generated_labels;
 
-    List<long long>* constants;
+    char* jit_buffer;
+
+    struct label_pair{
+        const char* label;
+        char* RIP;
+        size_t op_code_size;
+    };
+
+    List<label_pair>* labels_to_fill;
+
+    Hash_map* label_table;
 
     size_t root;
 
@@ -278,65 +314,6 @@ struct AST_tree{
 
 
 //////////////////////////////////////////////////////////////////////////////////////
-/////////////////   GENERATE ASSEMBLER COMMANDS    ///////////////////////////////////
-
-    // size_t generate_code(char* line);
-
-    // size_t generate_default_return(char* line);
-
-    // size_t generate_body_code(size_t index, char* line);
-
-    // void get_function_arguments(size_t index);
-
-    // size_t generate_function_code(size_t index, char* line);
-
-    // size_t generate_statement_code(size_t index, char* line); 
-
-    // size_t generate_expression(size_t index, char* line);
-
-    // size_t generate_assignment(size_t index, char* line);
-
-    // size_t print_logical_operator(size_t index, char* line);
-
-    // size_t print_binary_operator(size_t index, char* line);
-
-    // size_t generate_return(size_t index, char* line);
-
-    // size_t generate_standart_function(size_t index, char* line);
-
-    // size_t generate_write(size_t index, char* line);
-
-    // size_t generate_function_call(size_t index, char* line);
-
-    // size_t generate_func_arguments(size_t index, char* line);
-
-    // size_t generate_variable_declaration(size_t index, char* line);
-
-    // size_t generate_condition(size_t index, char* line);
-
-    // size_t generate_body(size_t index, char* line);
-
-    // size_t generate_loop(size_t index, char* line);
-
-    // size_t print_logic(size_t index, char* line);
-
-    // size_t get_func_argc(size_t index);
-
-    // size_t generate_window(size_t index, char* line);
-
-    // size_t generate_draw(size_t index, char* line);
-
-    // size_t generate_pixel(size_t index, char* line);
-
-    // size_t generate_sin(size_t index, char* line);
-
-    // size_t generate_cos(size_t index, char* line);
-
-    // size_t generate_abs(size_t index, char* line);
-
-    // size_t generate_label(Tree_Node node, char* line);
-
-//////////////////////////////////////////////////////////////////////////////////////
 /////////////////   GENERATE  NASM ASSEMBLER COMMANDS    ///////////////////////////////////
 
     size_t nasm_generate_code(char* line);
@@ -397,6 +374,96 @@ struct AST_tree{
     
     size_t nasm_generate_sqrt(size_t index, char* line);
 
+//////////////////////////////////////////////////////////////////////////////////////
+/////////////////   GENERATE x86 ELF EXECUTABLE    ///////////////////////////////////
+
+    size_t x86_generate_code(char* line);
+
+    size_t x86_generate_default_return(char* line);
+
+    size_t x86_generate_body_code(size_t index, char* line);
+
+    void x86_get_function_arguments(size_t index);
+
+    size_t x86_generate_function_code(size_t index, char* line);
+
+    size_t x86_generate_statement_code(size_t index, char* line); 
+
+    size_t x86_generate_expression(size_t index, char* line);
+
+    size_t x86_generate_assignment(size_t index, char* line);
+
+    size_t x86_print_logical_operator(size_t index, char* line);
+
+    size_t x86_print_binary_operator(size_t index, char* line);
+
+    size_t x86_generate_return(size_t index, char* line);
+
+    size_t x86_generate_standart_function(size_t index, char* line);
+
+    size_t x86_generate_write(size_t index, char* line);
+
+    size_t x86_generate_function_call(size_t index, char* line);
+
+    size_t x86_generate_func_arguments(size_t index, char* line);
+
+    size_t x86_generate_variable_declaration(size_t index, char* line);
+
+    size_t x86_generate_condition(size_t index, char* line);
+
+    size_t x86_generate_body(size_t index, char* line);
+
+    size_t x86_generate_loop(size_t index, char* line);
+
+    size_t x86_print_logic(size_t index, char* line);
+
+    size_t x86_get_func_argc(size_t index);
+
+    size_t x86_generate_window(size_t index, char* line);
+
+    size_t x86_generate_draw(size_t index, char* line);
+
+    size_t x86_generate_pixel(size_t index, char* line);
+
+    size_t x86_generate_sin(size_t index, char* line);
+
+    size_t x86_generate_cos(size_t index, char* line);
+
+    size_t x86_generate_abs(size_t index, char* line);
+
+    void x86_generate_label(Tree_Node node, char* line);
+
+    void x86_fill_labels();
+
+    void fill_x_bytes(int x, long long a, char* line);
+
+    size_t x86_load_printf(char* line);
+
+    size_t x86_load_scanf(char* line);
+
+
+    size_t x86_gen_push(char* line, Registers reg);
+
+    size_t x86_gen_pop(char* line, Registers reg);
+
+    size_t x86_gen_ret(char* line);
+
+    size_t x86_gen_call(char* line);
+
+    size_t x86_gen_mov_rbp_rsp(char* line);//    = mov rbp, rsp
+
+    size_t x86_gen_mov_rsp_rbp(char* line);//    = mov rsp, rbp
+
+    size_t x86_gen_mov_var_rax(char* line, int var_offset);//    = mov [rbp + var_offset], rax
+
+    size_t x86_gen_sub_rsp_8(char*line);
+
+    size_t x86_gen_mov_rax_const(char* line, long long value);
+
+    size_t x86_gen_mov_rdi_rax(char* line);
+
 };
+
+
 
 
