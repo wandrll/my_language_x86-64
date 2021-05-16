@@ -1,4 +1,5 @@
 #include "tree.h"
+#include "opcodes.h"
 
 
 
@@ -237,4 +238,77 @@ size_t AST_tree::x86_emit_idiv_r64(char* line, Registers reg1){
 
     return 3;
 }
+
+
+size_t AST_tree::x86_emit_cmp_r64_imm(char* line, Registers reg, int32_t value){
+    assert(reg < register_count);
+
+    
+    u_int16_t mov_op = CMP_RI;
+    
+    * line      = *(( u_int8_t*)(&mov_op));
+    *(line + 1) = *(((u_int8_t*)(&mov_op)) + 1);
+
+    u_int8_t byte = (0b11111000) | reg ;
+
+    *(line + 2) = byte;
+
+    fill_x_bytes(4, value, line + 3);
+
+    return 7;
+}
+
+size_t AST_tree::x86_emit_jmp(char* line){
+    // u_int16_t mov_op = CMP_RI;
+    
+    * line      = JMP;
+    // *(line + 1) = *(((u_int8_t*)(&type)) + 1);
+
+    return 5;
+}
+
+
+
+size_t AST_tree::x86_emit_jxx(char* line, Jump_opcodes type){
+    // u_int16_t mov_op = CMP_RI;
+    
+    * line      = *(( u_int8_t*)(&type));
+    *(line + 1) = *(((u_int8_t*)(&type)) + 1);
+
+    return 6;
+}
+
+size_t AST_tree::x86_emit_cmp_r64_r64(char* line, Registers reg1, Registers reg2){
+    assert(reg1 < register_count && reg2 < register_count);
+
+    u_int16_t mov_op = CMP_RR;
+    
+    * line      = *(( u_int8_t*)(&mov_op));
+    *(line + 1) = *(((u_int8_t*)(&mov_op)) + 1);
+
+
+    u_int8_t byte = (0b11000000) | reg1 | (reg2 << 3);
+
+    *(line + 2) = byte;
+
+    return 3;     
+}
+
+
+size_t AST_tree::x86_emit_pow_r64_r64(char* line, Registers reg1, Registers reg2){
+    assert(reg1 < register_count && reg2 < register_count);
+
+    u_int16_t mov_op = MOV_RR;
+    
+    * line      = *(( u_int8_t*)(&mov_op));
+    *(line + 1) = *(((u_int8_t*)(&mov_op)) + 1);
+
+
+    u_int8_t byte = (0b11000000) | reg1 | (reg2 << 3);
+
+    *(line + 2) = byte;
+
+    return 3;
+}
+
 

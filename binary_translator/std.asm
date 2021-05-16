@@ -25,10 +25,20 @@ fix_size equ 24
 %endrep 
 %endmacro
 
+
+db "JUMP_TABLE_BEGINS"
+dq fixed_scanf - $
+dq fixed_scanf_end - fixed_scanf
+
+dq fixed_printf - $
+dq fixed_printf_end - fixed_printf
+
+dq sqrt - $
+dq sqrt - sqrt
 ;----------------------------------------------------------------------------------------            
 ;Destroylist:  
 ;all args in stack (Cdecl)
-dq "SCANF_STARTS_HERE"
+; dq "SCANF_STARTS_HERE"
 fixed_scanf:
             multipush r11, r12, rbx, r13, r14, r10, r15
             sub rsp, BUFFER_SIZE                ;Trick to get rid of "section .data". we move rsp far left, so we have huge buffer. Then, we move it back
@@ -136,14 +146,14 @@ skip2:
             ret
 
 ;;----------------------------------------------------------------------------------------
-dq "SCANF_ENDS_HERE"
-
+; dq "SCANF_ENDS_HERE"
+fixed_scanf_end:
 
 
 
 %define PRINT_SIZE r11
 
-dq "PRINTF_STARTS_HERE"
+; dq "PRINTF_STARTS_HERE"
 ;----------------------------------------------------------------------------------------            
 ;Destroylist:  
 ;all args in stack (Cdecl)
@@ -290,6 +300,25 @@ Add_in_buffer_loop_:                        ;
 ;;----------------------------------------------------------------------------------------
 
 Symbols		db '0','1','2','3','4','5','6','7','8','9'
+fixed_printf_end:
+; dq "PRINTF_ENDS_HERE"
 
-dq "PRINTF_ENDS_HERE"
 
+sqrt:
+            cvtsi2sd xmm0, rax
+
+            mov rbx, 1
+            shl rbx, fix_size
+
+            cvtsi2sd xmm1, rbx
+
+            divpd xmm0, xmm1
+
+            sqrtpd xmm0, xmm0
+
+            mulpd xmm0, xmm1
+
+            cvttsd2si rax, xmm0
+
+            ret
+sqrt_end:

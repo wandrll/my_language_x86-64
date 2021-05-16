@@ -4,24 +4,21 @@
 #include <sys/stat.h>
 #include <cassert>
 #include <cstring>
+#include "opcodes.h"
 
 
 const char* reserved_name_for_main_func = "main0";
 const char* reserved_name_for_printf    = "fixed_printf";
 const char* reserved_name_for_scanf     = "fixed_scanf";
-const char* obj_name_io                 = "binary_translator/fixed_io.o";
+const char* reserved_name_for_sqrt      = "sqrt";
 
-const char* printf_start_label          = "PRINTF_STARTS_HERE";
-size_t leng_printf_start_label = strlen(printf_start_label);
+const char* obj_name_std                = "binary_translator/std.o";
 
-const char* printf_end_label            = "PRINTF_ENDS_HERE";
-size_t leng_printf_end_label = strlen(printf_end_label);
 
-const char* scanf_start_label          = "SCANF_STARTS_HERE";
-size_t leng_scanf_start_label = strlen(scanf_start_label);
+const char* jump_table_label           = "JUMP_TABLE_BEGINS";
+const size_t leng_jump_table_label = strlen(jump_table_label);
 
-const char* scanf_end_label            = "SCANF_ENDS_HERE";
-size_t leng_scanf_end_label = strlen(scanf_end_label);
+
 
 static size_t file_size(const char* file){
     assert(file != NULL);
@@ -31,14 +28,14 @@ static size_t file_size(const char* file){
     return st.st_size;
 }
 
-size_t AST_tree::x86_load_printf(char* line){
 
-    size_t size = file_size(obj_name_io);
+size_t AST_tree::x86_load_std(char* line){
+    size_t size = file_size(obj_name_std);
 
     char* buffer = (char*)calloc(size+1, sizeof(char));        
     assert(buffer != NULL);
 
-    FILE* fp = fopen (obj_name_io, "rb");
+    FILE* fp = fopen (obj_name_std, "rb");
     assert(fp != NULL);
     
     fread(buffer, sizeof(char), size, fp);
@@ -47,93 +44,55 @@ size_t AST_tree::x86_load_printf(char* line){
     char* curr = buffer;
 
     while(curr != buffer + size){
-        if(strncmp(curr, printf_start_label, leng_printf_start_label) == 0){
+        if(memcmp(curr, jump_table_label, leng_jump_table_label) == 0){
             break;
         }    
         curr++;
     }
 
+    curr += leng_jump_table_label;
 
-    assert(curr != NULL);
+   char* scanf_addr = *((long long*)curr) + curr;
+    curr += 8;
+    long long scanf_len = *((long long*)curr);
+    curr += 8;
 
-    char* begin = curr;
 
-    begin += leng_printf_start_label;
+    char* printf_addr = *((long long*)curr) + curr;
+    curr += 8;
+    long long printf_len = *((long long*)curr);
+    curr += 8;
 
-    while(!(*begin)){
-        begin++;
-    }
+ 
+    char* sqrt_addr = *((long long*)curr) + curr;
+    curr += 8;
+    long long sqrt_len = *((long long*)curr);
+    curr += 8;
 
-    while(curr != buffer + size){
-
-        if(strncmp(curr, printf_end_label, leng_printf_end_label) == 0){
-            break;
-        }    
-        curr++;
-    }
-
-    assert(curr != NULL);
-    char* end = curr;
-    size_t length = end - begin;
-
-    memcpy(line, begin, length);
-
-    free(buffer);
-    return length; 
-
-}
-
-size_t AST_tree::x86_load_scanf(char* line){
-
-    size_t size = file_size(obj_name_io);
-
-    char* buffer = (char*)calloc(size+1, sizeof(char));        
-    assert(buffer != NULL);
-
-    FILE* fp = fopen (obj_name_io, "rb");
-    assert(fp != NULL);
     
-    fread(buffer, sizeof(char), size, fp);
-    fclose(fp);
+    size_t offset = 0;
 
-    char* curr = buffer;
-    while(curr != buffer + size){
 
-        if(strncmp(curr, scanf_start_label, leng_scanf_start_label) == 0){
-            break;
-        }    
-        curr++;
-    }
-    assert(curr != NULL);
+    hash_map_insert(this->label_table, reserved_name_for_scanf, line + offset);
+    memcpy(line + offset, scanf_addr, scanf_len);
+    offset += scanf_len;
 
-    char* begin = curr;
 
-    begin += leng_scanf_start_label;
+    hash_map_insert(this->label_table, reserved_name_for_printf, line + offset);
+    memcpy(line + offset, printf_addr, printf_len);
+    offset += printf_len;
 
-    while(!(*begin)){
-        begin++;
-    }
 
-    while(curr != buffer + size){
 
-        if(strncmp(curr, scanf_end_label, leng_scanf_end_label) == 0){
-            break;
-        }    
-        curr++;
-    }
-
-    assert(curr != NULL);
-    char* end = curr;
-    size_t length = end - begin;
-
-    memcpy(line, begin, length);
+    hash_map_insert(this->label_table, reserved_name_for_sqrt, line + offset);
+    memcpy(line + offset, sqrt_addr, sqrt_len);
+    offset += sqrt_len;
 
     free(buffer);
-    return length; 
+
+    return offset;
 
 }
-
-
 
 
 void AST_tree::execute_JIT_compiled_buffer(){
@@ -145,7 +104,7 @@ void AST_tree::execute_JIT_compiled_buffer(){
 
 
 void AST_tree::JIT_compile(){
-    system("nasm -f elf64 binary_translator/fixed_io.asm");
+    system("nasm -f elf64 binary_translator/std.asm");
 
 
     this->labels_to_fill = (List<label_pair>*)calloc(1, sizeof(List<label_pair>));
@@ -182,13 +141,8 @@ void AST_tree::JIT_compile(){
     offset += x86_emit_ret(buffer + offset);
     offset += x86_generate_code(buffer + offset);
 
-    hash_map_insert(this->label_table, reserved_name_for_printf, buffer + offset);
-    offset += x86_load_printf(buffer + offset);
+    offset += x86_load_std(buffer + offset);
 
-
-    hash_map_insert(this->label_table, reserved_name_for_scanf, buffer + offset);
-    offset += x86_load_scanf(buffer + offset);
-    
     
     printf("%33sbuffer address: %p\n","", buffer);
     x86_fill_labels();  
@@ -355,12 +309,12 @@ size_t AST_tree::x86_generate_statement_code(size_t index, char* line){
             return x86_generate_variable_declaration(index, line);
         }
 
-        // case CONDITION:{
-            // return nasm_generate_condition(index, line);
-        // }
-        // case LOOP:{
-            // return nasm_generate_loop(index, line);
-        // }
+        case CONDITION:{
+            return x86_generate_condition(index, line);
+        }
+        case LOOP:{
+            return x86_generate_loop(index, line);
+        }
         // case WINDOW:{
             // printf("Unsupported operation, bitch\n");
             // fflush(stdout);
@@ -425,46 +379,45 @@ size_t AST_tree::x86_generate_expression(size_t index, char* line){
             off += x86_emit_push            (line + off, RAX);
             off += x86_generate_expression  (curr.left, line+off);
             off += x86_emit_pop             (line + off, RBX);
-            off += x86_print_binary_operator(index, line+off);
+            off += x86_generate_binary_operator(index, line+off);
             break;
         }
-/*
-        case LOGIC_OP:{
-            size_t offset = 0;
-            off+=nasm_generate_expression(curr.right, line+off);
-            
-            sprintf(line + off,   "push rax\n%n", &offset);
-            off+=offset;
 
-            off+=nasm_generate_expression(curr.left, line+off);
+        case LOGIC_OP:{
+
+            off += x86_generate_expression(curr.right, line+off);
             
-            sprintf(line + off,   "pop rbx\n%n", &offset);
-            off+=offset;
+            off += x86_emit_push(line + off, RAX);
+
+            off += x86_generate_expression(curr.left, line+off);
             
-            off+=nasm_print_logical_operator(index, line+off);
+
+            off += x86_emit_pop(line + off, RBX);
+
+            off += x86_generate_logical_operator(index, line+off);
             
-            this->curr_label++;
+         
+  
             break;
         }
 
          case LOGIC:{
             size_t offset = 0;
-            off+=nasm_generate_expression(curr.right, line+off);
+            off += x86_generate_expression(curr.right, line+off);
             
-            sprintf(line + off,   "push rax\n%n", &offset);
-            off+=offset;
+            off += x86_emit_push(line + off, RAX);
 
-            off+=nasm_generate_expression(curr.left, line+off);
+            off += x86_generate_expression(curr.left, line+off);
             
-            sprintf(line + off,   "pop rbx\n%n", &offset);
-            off+=offset;
+
+            off += x86_emit_pop(line + off, RBX);
+
+            off += x86_generate_logic(index, line+off);
             
-            off+=nasm_print_logic(index, line+off);
-            
-            this->curr_label++;
+         
              break;
          }
-*/
+
          case VARIABLE:{
             size_t var = this->scope->var_offset(curr.u.line);
             
@@ -517,11 +470,28 @@ size_t AST_tree::x86_generate_standart_function(size_t index, char* line){
             printf("Unsupported operation, bitch\n");
             fflush(stdout);
             abort();
-        }
-        case SQRT:{
-            offset+= nasm_generate_sqrt(curr.left, line);
         }*/
+        case SQRT:{
+            offset+= x86_generate_sqrt(curr.left, line);
+        }
     }
+    return offset;
+}
+
+
+size_t AST_tree::x86_generate_sqrt(size_t index, char* line){
+    size_t offset = 0;
+    size_t argc = nasm_get_func_argc(index);
+    if(argc != 1){
+        printf("Wrong count of sqrt arguments");
+        fflush(stdout);
+        assert(0);
+    }
+    offset+= x86_generate_expression(get_node(index).left, line);
+
+    this->labels_to_fill->push_back({reserved_name_for_sqrt, line + offset + 1, 4});
+    offset += x86_emit_call       (line + offset);
+
     return offset;
 }
 
@@ -546,7 +516,7 @@ size_t AST_tree::x86_generate_write(size_t index, char* line){
     return offset;
 }
 
-size_t AST_tree::x86_print_binary_operator(size_t index, char* line){
+size_t AST_tree::x86_generate_binary_operator(size_t index, char* line){
     size_t off = 0;
     Tree_Node curr = get_node(index);
 
@@ -577,6 +547,7 @@ size_t AST_tree::x86_print_binary_operator(size_t index, char* line){
 
             return off;
         }
+
 
         
     }
@@ -656,3 +627,208 @@ size_t AST_tree::x86_generate_function_call(size_t index, char* line){
     return offset;
 
 }
+
+
+
+size_t AST_tree::x86_generate_logic(size_t index, char* line){
+    size_t off = 0;
+    Tree_Node curr = get_node(index);
+
+    switch((Math_operators)curr.u.value){
+        case AND:{
+
+            off += x86_emit_cmp_r64_imm (line + off, RAX, 0);
+            char* addr1_false_to_fill = line + off + 2;
+            off += x86_emit_jxx         (line + off, JE);
+
+            off += x86_emit_cmp_r64_imm (line + off, RBX, 0);
+            char* addr2_false_to_fill = line + off + 2;
+            off += x86_emit_jxx         (line + off, JE);
+
+            off += x86_emit_mov_r64_imm (line + off, RAX, maximum_of_fractional_part);
+            char* addr1_true_fill = line + off + 1;
+            off += x86_emit_jmp         (line + off);
+
+            fill_x_bytes(4, (line + off) - (addr1_false_to_fill + 4), addr1_false_to_fill);
+            fill_x_bytes(4, (line + off) - (addr2_false_to_fill + 4), addr2_false_to_fill);
+
+            off += x86_emit_xor_r64_r64(line + off, RAX, RAX);
+
+            fill_x_bytes(4, (line + off) - (addr1_true_fill + 4), addr1_true_fill);
+
+return off;
+        }
+        case OR:{
+            off += x86_emit_cmp_r64_imm (line + off, RAX, 0);
+            char* addr1_true_to_fill = line + off + 2;
+            off += x86_emit_jxx         (line + off, JNE);
+
+            off += x86_emit_cmp_r64_imm (line + off, RBX, 0);
+            char* addr2_true_to_fill = line + off + 2;
+            off += x86_emit_jxx         (line + off, JNE);
+
+            off += x86_emit_xor_r64_r64(line + off, RAX, RAX);
+
+            char* addr1_false_to_fill = line + off + 1;
+            off += x86_emit_jmp         (line + off);
+
+            fill_x_bytes(4, (line + off) - (addr1_true_to_fill + 4), addr1_true_to_fill);
+            fill_x_bytes(4, (line + off) - (addr2_true_to_fill + 4), addr2_true_to_fill);
+            off += x86_emit_mov_r64_imm (line + off, RAX, maximum_of_fractional_part);
+
+            fill_x_bytes(4, (line + off) - (addr1_false_to_fill + 4), addr1_false_to_fill);
+
+
+            
+            return off;
+        }
+    }
+     printf("Error. Unknown node %d", curr.type);
+    fflush(stdout);
+    assert(0);
+}
+
+size_t AST_tree::x86_generate_logical_operator(size_t index, char* line){
+    size_t off = 0;
+    Tree_Node curr = get_node(index);
+
+    Jump_opcodes cmp_type = JE;
+
+    switch((Math_operators)curr.u.value){
+        case EQUAL:{
+            cmp_type = JE;
+            break;
+        }
+        case NOT_EQUAL:{
+            cmp_type = JNE;
+            break;
+        }
+        case BELOW:{
+            cmp_type = JL;
+            break;
+        }
+        case BELOW_EQUAL:{
+            cmp_type = JLE;
+            break;
+        }
+        case ABOVE:{
+            cmp_type = JG;
+            break;
+        }
+        case ABOVE_EQUAL:{
+            cmp_type = JGE;
+            break;
+        }
+        default:{
+            printf("Error. Unknown node %d", curr.type);
+            fflush(stdout);
+            assert(0);
+        }
+    }
+    off += x86_emit_cmp_r64_r64(line + off, RAX, RBX);
+    char* addr_to_fill_true = line + off + 2;
+    off += x86_emit_jxx(line + off, cmp_type); 
+
+    off += x86_emit_xor_r64_r64(line + off, RAX, RAX);
+    char* addr_to_fill_false = line + off + 1;
+
+    off += x86_emit_jmp(line + off);
+
+    fill_x_bytes(4, (line + off) - (addr_to_fill_true + 4), addr_to_fill_true);
+
+    off += x86_emit_mov_r64_imm(line + off, RAX, maximum_of_fractional_part);
+
+    fill_x_bytes(4, (line + off) - (addr_to_fill_false + 4), addr_to_fill_false);
+    
+    return off;
+
+    
+}
+
+size_t AST_tree::x86_generate_body(size_t index, char* line){
+
+    size_t offset = 0;
+    while(index != 0){
+        Tree_Node curr = get_node(index);
+        offset+=x86_generate_statement_code(curr.left, line+offset);
+        index = curr.right;
+    }
+
+    return offset;
+}
+
+
+
+size_t AST_tree::x86_generate_condition(size_t index, char* line){
+     Tree_Node curr = get_node(index);
+    
+    size_t offset = 0;
+
+    Tree_Node right = get_node(curr.right);
+
+    offset += x86_generate_expression(curr.left, line+offset);
+    offset += x86_emit_cmp_r64_imm(line + offset, RAX, 0);
+    char* addr_cnd_to_fill = line + offset + 2;
+    offset += x86_emit_jxx(line + offset, JE);
+
+    offset += x86_generate_body(right.left, line+offset);
+    
+    char* addr_end_to_fill = line + offset + 1;    
+    offset += x86_emit_jmp(line + offset);
+
+
+    fill_x_bytes(4, (line + offset) - (addr_cnd_to_fill + 4), addr_cnd_to_fill);
+
+    offset +=x86_generate_body(right.right, line+offset);
+
+    fill_x_bytes(4, (line + offset) - (addr_end_to_fill + 4), addr_end_to_fill);
+
+ 
+    return offset;
+}
+
+
+
+size_t AST_tree::x86_generate_loop(size_t index, char* line){
+    Tree_Node curr = get_node(index);
+    size_t offset = 0;
+
+    char* begin = line;
+    offset += x86_generate_expression(curr.left, line+offset);
+
+    offset += x86_emit_cmp_r64_imm(line + offset, RAX, 0);
+
+    char* addr_end_to_fill = line + offset + 2;
+
+    offset += x86_emit_jxx(line + offset, JE);
+
+    offset += x86_generate_body(index, line + offset);
+
+    offset += x86_emit_jmp(line + offset);
+
+    fill_x_bytes(4, begin - (line + offset), line + offset - 4);
+
+    fill_x_bytes(4, (line + offset) - (addr_end_to_fill + 4), addr_end_to_fill);
+
+
+/*
+    sprintf(line+offset, "loop_LC%lld:\n%n", curr_lop, &off);
+    offset+=off;
+    offset+=nasm_generate_expression(curr.left, line+offset);
+
+    sprintf(line+offset, "cmp rax, 0\n" 
+                         "je LC_end_loop%lld\n%n", curr_lop, &off);
+    offset+=off;
+
+    offset+=nasm_generate_body(index, line+offset);
+
+    sprintf(line+offset, "JMP loop_LC%lld\n%n", curr_lop, &off);
+    offset+=off;
+
+    sprintf(line+offset, "LC_end_loop%lld:\n%n", curr_lop, &off);
+    offset+=off;
+
+
+*/
+    return offset;
+}   

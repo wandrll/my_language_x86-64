@@ -9,57 +9,10 @@
 #include <string.h>
 #include "table_name.h"
 #include "../hash_map/hash_map.hpp"
-
+#include "opcodes.h"
 const long long maximum_of_fractional_part = 16777216; //24 bit meaning 2^24
 
 
-const int register_count = 8;
-enum Registers{
-    RAX = 0x00,
-    RCX = 0x01,
-    RDX = 0x02,
-    RBX = 0x03,
-    RSP = 0x04,
-    RBP = 0x05,
-    RSI = 0x06,  
-    RDI = 0x07
-};
-
-enum Stack_opcodes{
-    PUSH = 0x50,
-    POP  = 0x58
-};
-
-enum Call_opcodes{
-    RET = 0xc3,
-    CALL = 0xe8
-};
-
-enum Mov_opcodes{
-    MOV_RR = 0x8948,
-    MOV_MR = 0x8948,
-    MOV_RM = 0x8b48,
-    MOV_RI = 0x48
-};
-
-enum Add_opcodes{
-    ADD_RR = 0x0148,
-    ADD_RI = 0x8148  
-};
-
-enum Sub_opcodes{
-    SUB_RR = 0x2948,
-    SUB_RI = 0x8148
-};
-
-enum Math_opcodes{
-    IDIV = 0xf748, 
-    IMUL = 0xf748   //11101000
-};
-
-enum Logic_opcodes{
-    XOR_RR = 0x3148
-};
 
 enum Node_type{
     GARBAGE = 0,
@@ -426,9 +379,9 @@ struct AST_tree{
 
     size_t x86_generate_assignment(size_t index, char* line);
 
-    size_t x86_print_logical_operator(size_t index, char* line);
+    size_t x86_generate_logical_operator(size_t index, char* line);
 
-    size_t x86_print_binary_operator(size_t index, char* line);
+    size_t x86_generate_binary_operator(size_t index, char* line);
 
     size_t x86_generate_return(size_t index, char* line);
 
@@ -448,7 +401,7 @@ struct AST_tree{
 
     size_t x86_generate_loop(size_t index, char* line);
 
-    size_t x86_print_logic(size_t index, char* line);
+    size_t x86_generate_logic(size_t index, char* line);
 
     size_t x86_get_func_argc(size_t index);
 
@@ -470,12 +423,11 @@ struct AST_tree{
 
     void fill_x_bytes(int x, int64_t a, char* line);
 
-    size_t x86_load_printf(char* line);
-
-    size_t x86_load_scanf(char* line);
+    size_t x86_load_std(char* line);
 
     void x86_generate_label_call(AST_tree::Tree_Node node, char* line);
 
+    size_t x86_generate_sqrt(size_t index, char* line);
     
 ////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////EMIT MACHINE CODE IN BUFFER//////////////////////
@@ -505,9 +457,17 @@ struct AST_tree{
 
     size_t x86_emit_xor_r64_r64(char* line, Registers reg1, Registers reg2);
     // size_t x86_gen_xor_rdx_rdx(char* line);
+    size_t x86_emit_cmp_r64_r64(char* line, Registers reg1, Registers reg2);
+    size_t x86_emit_cmp_r64_imm(char* line, Registers reg1, int32_t value);
+    
+    size_t x86_emit_jxx(char* line, Jump_opcodes type);
 
-    
-    
+    size_t x86_emit_jmp(char* line);
+
+
+    size_t x86_emit_pow_r64_r64(char* line, Registers reg1, Registers reg2);
+
+
 
 };
 
