@@ -11,6 +11,7 @@
 
 void AST_tree::lexical_analysis(const char* file){
     this->list = (List<Tree_Node>*)calloc(1, sizeof(List<Tree_Node>));
+    this->jit_buffer = NULL;
 
     Stack_t<Error> errors = {};
     errors.constructor(10);

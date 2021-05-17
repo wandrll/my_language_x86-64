@@ -4,8 +4,10 @@
 #include <sys/stat.h>
 #include <cassert>
 #include <cstring>
+#include <elf.h>
 #include "opcodes.h"
-
+#include <ctime>
+#pragma pack(push, 1)
 
 const char* reserved_name_for_main_func = "main0";
 const char* reserved_name_for_printf    = "fixed_printf";
@@ -17,6 +19,8 @@ const char* obj_name_std                = "binary_translator/std.o";
 
 const char* jump_table_label           = "JUMP_TABLE_BEGINS";
 const size_t leng_jump_table_label = strlen(jump_table_label);
+
+
 
 
 
@@ -97,8 +101,17 @@ size_t AST_tree::x86_load_std(char* line){
 
 void AST_tree::execute_JIT_compiled_buffer(){
     if(this->jit_buffer){
+        mprotect(this->jit_buffer, this->jit_buffer_size, PROT_READ | PROT_EXEC);
+
+        clock_t begin = clock();
         void (*func)() = (void(*)())(this->jit_buffer);
         func();
+        double time = clock() - begin;
+
+        printf("\nExecuted successfully (%lg seconds)", time/CLOCKS_PER_SEC);
+
+        mprotect(this->jit_buffer, this->jit_buffer_size, PROT_READ);
+
     }
 }
 
@@ -136,9 +149,16 @@ void AST_tree::JIT_compile(){
 
 
 
-
+    this->return_addr = buffer + offset;
 
     offset += x86_emit_ret(buffer + offset);
+
+
+
+    offset += x86_emit_mov_r64_imm(buffer + offset, RAX, 0x3c);
+    offset += x86_emit_xor_r64_r64(buffer + offset, RDI, RDI);
+    offset += x86_emit_syscall(buffer + offset);
+
     offset += x86_generate_code(buffer + offset);
 
     offset += x86_load_std(buffer + offset);
@@ -153,7 +173,12 @@ void AST_tree::JIT_compile(){
     // }
 
     fflush(stdout);
+    if(this->jit_buffer){
+        free(this->jit_buffer);
+    }
+
     this->jit_buffer = buffer;
+    this->jit_buffer_size = offset;
 
     hash_map_destructor(this->label_table);
     free(this->label_table);
@@ -166,6 +191,9 @@ void AST_tree::JIT_compile(){
 
     this->labels_to_fill->destructor();
     free(this->labels_to_fill);
+
+    mprotect(buffer, this->jit_buffer_size, PROT_READ);
+
 }
 
 
@@ -315,16 +343,7 @@ size_t AST_tree::x86_generate_statement_code(size_t index, char* line){
         case LOOP:{
             return x86_generate_loop(index, line);
         }
-        // case WINDOW:{
-            // printf("Unsupported operation, bitch\n");
-            // fflush(stdout);
-            // abort();
-        // }
-        // case DRAW:{
-            // printf("Unsupported operation, bitch\n");
-            // fflush(stdout);
-            // abort();
-        // }
+
         default:{
             return x86_generate_expression(index, line); 
         }
@@ -442,6 +461,7 @@ size_t AST_tree::x86_generate_expression(size_t index, char* line){
              off += x86_generate_function_call(index, line);
              break;
          }
+
     }
 
     return off;
@@ -455,22 +475,7 @@ size_t AST_tree::x86_generate_standart_function(size_t index, char* line){
             offset+= x86_generate_write(curr.left, line);
             break;
         }
-        /*
-        case PUT_PIXEL:{
-            printf("Unsupported operation, bitch\n");
-            fflush(stdout);
-            abort();
-        }
-        case SIN:{
-            printf("Unsupported operation, bitch\n");
-            fflush(stdout);
-            abort();
-        }
-        case COS:{
-            printf("Unsupported operation, bitch\n");
-            fflush(stdout);
-            abort();
-        }*/
+
         case SQRT:{
             offset+= x86_generate_sqrt(curr.left, line);
         }
@@ -811,24 +816,5 @@ size_t AST_tree::x86_generate_loop(size_t index, char* line){
     fill_x_bytes(4, (line + offset) - (addr_end_to_fill + 4), addr_end_to_fill);
 
 
-/*
-    sprintf(line+offset, "loop_LC%lld:\n%n", curr_lop, &off);
-    offset+=off;
-    offset+=nasm_generate_expression(curr.left, line+offset);
-
-    sprintf(line+offset, "cmp rax, 0\n" 
-                         "je LC_end_loop%lld\n%n", curr_lop, &off);
-    offset+=off;
-
-    offset+=nasm_generate_body(index, line+offset);
-
-    sprintf(line+offset, "JMP loop_LC%lld\n%n", curr_lop, &off);
-    offset+=off;
-
-    sprintf(line+offset, "LC_end_loop%lld:\n%n", curr_lop, &off);
-    offset+=off;
-
-
-*/
     return offset;
 }   

@@ -32,12 +32,12 @@ int main(const int argc, const char** argv){
 
         }
     }
-    printf("Executed succesfully\n");
-    // tree.create_nasm_file("a.asm");
-    tree.destructor();
-    // system("nasm -f elf64 a.asm");
-    // system("nasm -f elf64 binary_translator/printf.asm");
-    // system("nasm -f elf64 binary_translator/fixed_io.asm");
 
-    // system("ld -s a.o binary_translator/fixed_io.o -o executable");
+    tree.create_executable("res");
+
+    // tree.execute_JIT_compiled_buffer();
+
+
+    tree.destructor();
+
 }

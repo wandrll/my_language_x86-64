@@ -87,7 +87,7 @@ struct Lexer_Node{
 };
 const int max_buffer_size = 65536;
 
-const int node_types_count = 38;
+const int node_types_count = 32;
 const Lexer_Node node_types[] = {
     {"("            , 1, BRACKET_OP                     },
     {")"            , 1, BRACKET_CL                     },
@@ -120,12 +120,12 @@ const Lexer_Node node_types[] = {
     {","            , 1, COMMA                          },
     {"&&"           , 2, LOGIC            , AND         },
     {"||"           , 2, LOGIC            , OR          },
-    {"Window"       , 6, WINDOW                         },
-    {"Pixel"        , 5, STANDART_FUNCTION, PUT_PIXEL   },
-    {"Redraw"       , 6, DRAW,                          },
-    {"Abs"          , 3, STANDART_FUNCTION, ABS         },
-    {"Sin"          , 3, STANDART_FUNCTION, SIN         },
-    {"Cos"          , 3, STANDART_FUNCTION, COS         },
+    // {"Window"       , 6, WINDOW                         },
+    // {"Pixel"        , 5, STANDART_FUNCTION, PUT_PIXEL   },
+    // {"Redraw"       , 6, DRAW,                          },
+    // {"Abs"          , 3, STANDART_FUNCTION, ABS         },
+    // {"Sin"          , 3, STANDART_FUNCTION, SIN         },
+    // {"Cos"          , 3, STANDART_FUNCTION, COS         },
     {"Sqrt"         , 4, STANDART_FUNCTION, SQRT        }
 
 
@@ -153,6 +153,9 @@ struct AST_tree{
     void create_assemble_file(const char* file);
 
     void JIT_compile();
+
+    void create_executable(const char* file);
+
     void create_nasm_file(const char* file);
 
     void execute_JIT_compiled_buffer();
@@ -179,9 +182,11 @@ struct AST_tree{
 
     List<char*>* prts_for_free;
 
+    char* return_addr;
+
 
     char* jit_buffer;
-
+    size_t jit_buffer_size;
     struct label_pair{
         const char* label;
         char* RIP;
@@ -467,7 +472,7 @@ struct AST_tree{
 
     size_t x86_emit_pow_r64_r64(char* line, Registers reg1, Registers reg2);
 
-
+    size_t x86_emit_syscall(char* line);
 
 };
 

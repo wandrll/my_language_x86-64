@@ -311,4 +311,12 @@ size_t AST_tree::x86_emit_pow_r64_r64(char* line, Registers reg1, Registers reg2
     return 3;
 }
 
+size_t AST_tree::x86_emit_syscall(char* line){
+    u_int16_t op = SYSCALL;
+    
+    * line      = *(( u_int8_t*)(&op));
+    *(line + 1) = *(((u_int8_t*)(&op)) + 1);
+
+    return 2;
+}
 

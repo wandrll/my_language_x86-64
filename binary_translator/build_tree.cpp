@@ -216,8 +216,8 @@ void AST_tree::change_value(size_t index, long long val){
         size_t curr = 0;
         if(   is_type(RETURN)            || is_type(VARIABLE)  || is_type(BRACKET_OP) ||
               is_type(STANDART_FUNCTION) || is_type(CONDITION) || is_type(LOOP)       ||
-              is_type(NUMBER)            || is_type(DECLARATOR)|| is_type(UNARY)      ||
-              is_type(WINDOW)            || is_type(DRAW)){
+              is_type(NUMBER)            || is_type(DECLARATOR)|| is_type(UNARY)      
+              ){
             res = Get_link_statement();     
 
         }
@@ -226,8 +226,8 @@ void AST_tree::change_value(size_t index, long long val){
 
         while(is_type(RETURN)            || is_type(VARIABLE)  || is_type(BRACKET_OP) ||
               is_type(STANDART_FUNCTION) || is_type(CONDITION) || is_type(LOOP)       ||
-              is_type(NUMBER)            || is_type(DECLARATOR)|| is_type(UNARY)      ||
-              is_type(WINDOW)            || is_type(DRAW)){
+              is_type(NUMBER)            || is_type(DECLARATOR)|| is_type(UNARY)      
+              ){
             
             curr = Get_link_statement();
             Tree_Node tmp = {};
@@ -304,14 +304,7 @@ void AST_tree::change_value(size_t index, long long val){
                 curr = Get_variable_declaration();
                 break;
             }
-            case WINDOW:{
-                curr = Get_window();
-                break;
-            }
-            case DRAW:{
-                curr = Get_draw();
-                break;
-            }
+           
             default:{
                 curr = Get_expression();
             }
@@ -330,16 +323,7 @@ void AST_tree::change_value(size_t index, long long val){
         return res;
     }
 
-    size_t AST_tree::Get_window(){
-        this->current++;
-        return this->current-1;
-    }
-
-    size_t AST_tree::Get_draw(){
-        this->current++;
-        return this->current-1;
-    }
-
+   
 
     size_t AST_tree::Get_loop(){
         require(__LINE__,LOOP);

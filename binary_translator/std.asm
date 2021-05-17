@@ -3,6 +3,7 @@ default rel
 
 global fixed_scanf
 global fixed_printf
+global sqrt
 
 BUFFER_SIZE equ 128
 
@@ -34,7 +35,7 @@ dq fixed_printf - $
 dq fixed_printf_end - fixed_printf
 
 dq sqrt - $
-dq sqrt - sqrt
+dq sqrt_end - sqrt
 ;----------------------------------------------------------------------------------------            
 ;Destroylist:  
 ;all args in stack (Cdecl)

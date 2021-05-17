@@ -7,6 +7,8 @@
 #include <sys/stat.h>
 #include <ctype.h>
 #include <string.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
 
 void AST_tree::destructor(){
     for(int i = 1; i <= list->count(); i++){
@@ -20,8 +22,10 @@ void AST_tree::destructor(){
     free(list);
     this->list = NULL;
     if(this->jit_buffer){
+        mprotect(this->jit_buffer, this->jit_buffer_size, PROT_READ | PROT_WRITE);
         free(this->jit_buffer);
         this->jit_buffer = NULL;
+        this->jit_buffer_size = 0;
     }
 }
 

@@ -10,8 +10,8 @@ all: compiler
 
 
 
-compiler: $(Lexer_dir)/main.o $(Lexer_dir)/build_tree.o $(Lexer_dir)/lexer.o $(Lexer_dir)/table_name.o $(Lexer_dir)/tree.o  $(Lexer_dir)/translator.o $(Lexer_dir)/binary_translator.o $(Lexer_dir)/opcodes.o hash_map/list.o hash_map/hash_map.o $(Lexer_dir)/tree.h
-	g++ $(LDFLAGS) $(Lexer_dir)/main.o  $(Lexer_dir)/build_tree.o $(Lexer_dir)/lexer.o $(Lexer_dir)/table_name.o $(Lexer_dir)/tree.o  $(Lexer_dir)/translator.o $(Lexer_dir)/binary_translator.o $(Lexer_dir)/opcodes.o hash_map/list.o hash_map/hash_map.o -o comp 
+compiler: $(Lexer_dir)/main.o $(Lexer_dir)/build_tree.o $(Lexer_dir)/lexer.o $(Lexer_dir)/table_name.o $(Lexer_dir)/tree.o  $(Lexer_dir)/elf.o $(Lexer_dir)/translator.o $(Lexer_dir)/binary_translator.o $(Lexer_dir)/opcodes.o hash_map/list.o hash_map/hash_map.o $(Lexer_dir)/tree.h
+	g++ $(LDFLAGS) $(Lexer_dir)/main.o  $(Lexer_dir)/build_tree.o $(Lexer_dir)/lexer.o $(Lexer_dir)/table_name.o $(Lexer_dir)/tree.o $(Lexer_dir)/elf.o $(Lexer_dir)/translator.o $(Lexer_dir)/binary_translator.o $(Lexer_dir)/opcodes.o hash_map/list.o hash_map/hash_map.o -o comp 
 
 main.o: $(Lexer_dir)/main.cpp $(Lexer_dir)/table_name.h $(Lexer_dir)/tree.h 
 	g++ $(CFLAGS) $(Lexer_dir)/main.cpp
@@ -40,8 +40,12 @@ list.o: hash_map/list.cpp hash_map/list.hpp
 hash_table.o: hash_map/hash_table.cpp hash_map/hash_table.hpp
 	g++ $(CFLAGS) hash_table.cpp -msse4 -mavx2
 
-opcodes.o: $(Lexer_dir)/opcodes.cpp $(Lexer_dir)/tree.h 
+opcodes.o: $(Lexer_dir)/opcodes.cpp $(Lexer_dir)/tree.h $(Lexer_dir)/opcodes.h 
 	g++ $(CFLAGS) $(Lexer_dir)/opcodes.cpp
+
+elf.o: $(Lexer_dir)/elf.cpp $(Lexer_dir)/elf.h $(Lexer_dir)/tree.h
+	g++ $(CFLAGS) $(Lexer_dir)/elf.cpp
+
 
 clean:
 	rm -rf *.o comp stack/*.o  $(Lexer_dir)/*.o
