@@ -115,8 +115,10 @@ void AST_tree::execute_JIT_compiled_buffer(){
     }
 }
 
+//Jit-компилятор переводит байт-код виртуальной машины в машинный код , backend компилятор переводит дерево в маш. код / байт-код вирт. машины
 
-void AST_tree::JIT_compile(){
+
+void AST_tree::JIT_compile(){ //Rename
     system("nasm -f elf64 binary_translator/std.asm");
 
 
@@ -388,8 +390,12 @@ size_t AST_tree::x86_generate_expression(size_t index, char* line){
     size_t off = 0;
     Tree_Node curr = get_node(index);
      switch(curr.type){
-        case NUMBER:{            
-            off += x86_emit_mov_r64_imm     (line + off, RAX, curr.u.value);
+        case NUMBER:{
+            // if(curr.u.value == 0){
+                // off += x86_emit_xor_r64_r64(line + off, RAX, RAX);
+            // }else{            
+                off += x86_emit_mov_r64_imm     (line + off, RAX, curr.u.value);
+            // }
             break;
         }
         case BINARY_OP:{

@@ -37,8 +37,7 @@ dq fixed_printf_end - fixed_printf
 dq sqrt - $
 dq sqrt_end - sqrt
 ;----------------------------------------------------------------------------------------            
-;Destroylist:  
-;all args in stack (Cdecl)
+
 ; dq "SCANF_STARTS_HERE"
 fixed_scanf:
             multipush r11, r12, rbx, r13, r14, r10, r15
