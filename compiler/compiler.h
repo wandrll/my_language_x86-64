@@ -133,7 +133,7 @@ const Lexer_Node node_types[] = {
 
 
 
-struct AST_tree{
+struct Compiler{
     struct Tree_Node{
         Node_type type;
         union{
@@ -150,23 +150,14 @@ struct AST_tree{
         char symbol;
     };
 
-    void create_assemble_file(const char* file);
+    void constructor();
 
-    void JIT_compile();
-
-    void create_executable(const char* file);
-
-    void create_nasm_file(const char* file);
-
-    void execute_JIT_compiled_buffer();
+    void compile(const char* input, const char* output);
 
     void destructor();
-    void lexical_analysis(const char* file);
-    void dump_list(const char* file);
-    void build_AST();
+
     void dump_tree(const char* file);
-    void save_tree(const char* file);
-    void load_tree(const char* file);
+
 
     void print_types(){
         for(int i = 1; i <= this->list->size; i++){
@@ -177,16 +168,34 @@ struct AST_tree{
 
 
     private:
+
+
+    void create_assemble_file(const char* file);
+
+    void x86_compiler_backend();
+
+    void create_executable(const char* file);
+
+    void create_nasm_file(const char* file);
+
+
+    void lexical_analysis(const char* file);
+    void dump_list(const char* file);
+    void build_AST();
+    void save_tree(const char* file);
+    void load_tree(const char* file);
+
+
+
     List<Tree_Node>* list;
     List<char*>* generated_labels;
 
     List<char*>* prts_for_free;
 
-    char* return_addr;
 
 
-    char* jit_buffer;
-    size_t jit_buffer_size;
+    char* buffer;
+    size_t buffer_size;
     struct label_pair{
         const char* label;
         char* RIP;
@@ -430,7 +439,7 @@ struct AST_tree{
 
     size_t x86_load_std(char* line);
 
-    void x86_generate_label_call(AST_tree::Tree_Node node, char* line);
+    void x86_generate_label_call(Compiler::Tree_Node node, char* line);
 
     size_t x86_generate_sqrt(size_t index, char* line);
     

@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "tree.h"
+#include "compiler.h"
 #include <cassert>
 #include <stdlib.h>
 #include "../list/list.hpp"
@@ -9,9 +9,7 @@
 #include <string.h>
 
 
-void AST_tree::lexical_analysis(const char* file){
-    this->list = (List<Tree_Node>*)calloc(1, sizeof(List<Tree_Node>));
-    this->jit_buffer = NULL;
+void Compiler::lexical_analysis(const char* file){
 
     Stack_t<Error> errors = {};
     errors.constructor(10);
@@ -89,7 +87,7 @@ void AST_tree::lexical_analysis(const char* file){
 }    
 
 
-    size_t AST_tree::push_variable(char* curr){
+    size_t Compiler::push_variable(char* curr){
         size_t len = var_len(curr);
         char* line = (char*) calloc(len + 15, sizeof(char));
         memcpy(line, curr, len);
@@ -101,7 +99,7 @@ void AST_tree::lexical_analysis(const char* file){
         return len;
     }
 
-    size_t AST_tree::push_value(char* curr){
+    size_t Compiler::push_value(char* curr){
         long long val1 = 0;
         double val2 = 0;
         size_t off = 0;
@@ -120,7 +118,7 @@ void AST_tree::lexical_analysis(const char* file){
         return off;
     }
 
-    void AST_tree::print_errors(Stack_t<Error>* st){
+    void Compiler::print_errors(Stack_t<Error>* st){
         size_t size = st->size;
         printf("%ld", size);
         for(int i = 0; i < size; i++){
@@ -132,21 +130,21 @@ void AST_tree::lexical_analysis(const char* file){
         abort();
     }
     
-    size_t AST_tree::file_size(const char* file){
+    size_t Compiler::file_size(const char* file){
         assert(file != NULL);
         struct stat st = {};
         stat(file, &st);
         return st.st_size;
     }
 
-    bool AST_tree::is_garbage(char c){
+    bool Compiler::is_garbage(char c){
         if(c == ' ' || c == '\n' || c == '\t'){
             return true;
         }
         return false;
     }
 
-    size_t AST_tree::var_len(char* line){
+    size_t Compiler::var_len(char* line){
         size_t res = 0;
         while(isalpha(*line) || isdigit(*line) || *line == '_'){
             line++;
@@ -155,7 +153,7 @@ void AST_tree::lexical_analysis(const char* file){
         return res;
     }
 
-    bool AST_tree::isnumber(char* line){
+    bool Compiler::isnumber(char* line){
         if(isdigit(*line)){
             return true;
         }

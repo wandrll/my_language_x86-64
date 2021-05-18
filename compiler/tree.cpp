@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "tree.h"
+#include "compiler.h"
 #include <cassert>
 #include <stdlib.h>
 #include "../list/list.hpp"
@@ -10,7 +10,29 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 
-void AST_tree::destructor(){
+void Compiler::constructor(){
+    this->list = (List<Tree_Node>*)calloc(1, sizeof(List<Tree_Node>));
+
+    this->labels_to_fill = (List<label_pair>*)calloc(1, sizeof(List<label_pair>));
+    this->labels_to_fill->constructor();
+
+    this->generated_labels = (List<char*>*)calloc(1, sizeof(List<char*>));
+    this->generated_labels->constructor();
+
+
+    this->prts_for_free = (List<char*>*)calloc(1, sizeof(List<char*>));
+    this->prts_for_free->constructor();
+
+    this->label_table = (Hash_map*)calloc(1, sizeof(Hash_map));
+    hash_map_constructor(this->label_table);
+
+    this->buffer = (char*)valloc(1024 * 1024);
+    this->buffer_size = 0;
+
+}
+
+
+void Compiler::destructor(){
     for(int i = 1; i <= list->count(); i++){
         Tree_Node tmp = list->get_value_by_index(i);
         if(tmp.type == VARIABLE      || tmp.type == FUNCTION_DECLARATOR ||
@@ -21,19 +43,31 @@ void AST_tree::destructor(){
     list->destructor();
     free(list);
     this->list = NULL;
-    if(this->jit_buffer){
-        mprotect(this->jit_buffer, this->jit_buffer_size, PROT_READ | PROT_WRITE);
-        free(this->jit_buffer);
-        this->jit_buffer = NULL;
-        this->jit_buffer_size = 0;
+    if(this->buffer){
+        mprotect(this->buffer, this->buffer_size, PROT_READ | PROT_WRITE);
+        free(this->buffer);
+        this->buffer = NULL;
+        this->buffer_size = 0;
     }
+
+    hash_map_destructor(this->label_table);
+    free(this->label_table);
+
+    this->prts_for_free->destructor();
+    free(this->prts_for_free);
+
+    this->generated_labels->destructor();
+    free(this->generated_labels);
+
+    this->labels_to_fill->destructor();
+    free(this->labels_to_fill);
 }
 
-void AST_tree::build_AST(){
+void Compiler::build_AST(){
     this->root = Get_grammar();
 }
 
-void AST_tree::dump_tree(const char* file){
+void Compiler::dump_tree(const char* file){
     FILE* fp = fopen("tmp.gv", "w");
     fprintf(fp,"digraph G{\n");
     do_tree_print(this->root, fp);
@@ -47,7 +81,7 @@ void AST_tree::dump_tree(const char* file){
     free(str);
 }
 
-void AST_tree::do_tree_print(size_t index, FILE* fp){
+void Compiler::do_tree_print(size_t index, FILE* fp){
     fprintf(fp, "%ld[shape=record label = \"",index);
     Tree_Node tmp = this->list->get_value_by_index(index);
     // printf("%ld  left=%ld  right=%ld\n", index, tmp.left, tmp.right);
@@ -67,7 +101,7 @@ void AST_tree::do_tree_print(size_t index, FILE* fp){
 
 
 
-void AST_tree::dump_list(const char* file){
+void Compiler::dump_list(const char* file){
     assert(list != NULL);
     assert(list->data != NULL);
     assert(file != NULL);
@@ -116,7 +150,7 @@ void AST_tree::dump_list(const char* file){
     free(str);
 }
 
-    void AST_tree::node_print(FILE* fp, Tree_Node* nd){
+    void Compiler::node_print(FILE* fp, Tree_Node* nd){
         if(nd->type == VARIABLE){
             fprintf(fp, "var %s", nd->u.line);
             return;

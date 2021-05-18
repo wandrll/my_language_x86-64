@@ -1,4 +1,4 @@
-#include "tree.h"
+#include "compiler.h"
 #include "../hash_map/hash_map.hpp"
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -14,13 +14,24 @@ const char* reserved_name_for_printf    = "fixed_printf";
 const char* reserved_name_for_scanf     = "fixed_scanf";
 const char* reserved_name_for_sqrt      = "sqrt";
 
-const char* obj_name_std                = "binary_translator/std.o";
+const char* obj_name_std                = "compiler/std.o";
 
 
 const char* jump_table_label           = "JUMP_TABLE_BEGINS";
 const size_t leng_jump_table_label = strlen(jump_table_label);
 
 
+
+void Compiler::compile(const char* input, const char* output){
+    this->lexical_analysis(input);
+
+    this->build_AST();
+
+    this->x86_compiler_backend();
+
+    this->create_executable(output);
+
+}
 
 
 
@@ -33,7 +44,7 @@ static size_t file_size(const char* file){
 }
 
 
-size_t AST_tree::x86_load_std(char* line){
+size_t Compiler::x86_load_std(char* line){
     size_t size = file_size(obj_name_std);
 
     char* buffer = (char*)calloc(size+1, sizeof(char));        
@@ -99,44 +110,16 @@ size_t AST_tree::x86_load_std(char* line){
 }
 
 
-void AST_tree::execute_JIT_compiled_buffer(){
-    if(this->jit_buffer){
-        mprotect(this->jit_buffer, this->jit_buffer_size, PROT_READ | PROT_EXEC);
-
-        clock_t begin = clock();
-        void (*func)() = (void(*)())(this->jit_buffer);
-        func();
-        double time = clock() - begin;
-
-        printf("\nExecuted successfully (%lg seconds)", time/CLOCKS_PER_SEC);
-
-        mprotect(this->jit_buffer, this->jit_buffer_size, PROT_READ);
-
-    }
-}
-
-//Jit-компилятор переводит байт-код виртуальной машины в машинный код , backend компилятор переводит дерево в маш. код / байт-код вирт. машины
 
 
-void AST_tree::JIT_compile(){ //Rename
-    system("nasm -f elf64 binary_translator/std.asm");
+void Compiler::x86_compiler_backend(){ 
+    system("nasm -f elf64 compiler/std.asm");
 
 
-    this->labels_to_fill = (List<label_pair>*)calloc(1, sizeof(List<label_pair>));
-    this->labels_to_fill->constructor();
-
-    this->generated_labels = (List<char*>*)calloc(1, sizeof(List<char*>));
-    this->generated_labels->constructor();
+    mprotect(buffer, this->buffer_size, PROT_READ | PROT_EXEC);
 
 
-    this->prts_for_free = (List<char*>*)calloc(1, sizeof(List<char*>));
-    this->prts_for_free->constructor();
-
-    this->label_table = (Hash_map*)calloc(1, sizeof(Hash_map));
-    hash_map_constructor(this->label_table);
-
-    char* buffer = (char*)valloc(1024 * 1024);
-    mprotect(buffer, 1024 * 1024, PROT_READ | PROT_WRITE | PROT_EXEC);
+    char* buffer = this->buffer;
 
     size_t offset = 0;
     size_t off = 0;
@@ -144,20 +127,13 @@ void AST_tree::JIT_compile(){ //Rename
 
     offset += x86_emit_push(buffer + offset, RBX);
 
-    this->labels_to_fill->push_back({reserved_name_for_main_func, buffer + offset + 1, 4});
+    this->labels_to_fill->push_back({reserved_name_for_main_func, buffer + offset + 1, 4}); // call operand size
     offset += x86_emit_call(buffer + offset);
 
     offset += x86_emit_pop(buffer + offset, RBX);
 
 
-
-    this->return_addr = buffer + offset;
-
-    offset += x86_emit_ret(buffer + offset);
-
-
-
-    offset += x86_emit_mov_r64_imm(buffer + offset, RAX, 0x3c);
+    offset += x86_emit_mov_r64_imm(buffer + offset, RAX, EXIT); // syscall exit
     offset += x86_emit_xor_r64_r64(buffer + offset, RDI, RDI);
     offset += x86_emit_syscall(buffer + offset);
 
@@ -175,33 +151,18 @@ void AST_tree::JIT_compile(){ //Rename
     // }
 
     fflush(stdout);
-    if(this->jit_buffer){
-        free(this->jit_buffer);
-    }
+   
+    this->buffer_size = offset;
 
-    this->jit_buffer = buffer;
-    this->jit_buffer_size = offset;
+    
 
-    hash_map_destructor(this->label_table);
-    free(this->label_table);
-
-    this->prts_for_free->destructor();
-    free(this->prts_for_free);
-
-    this->generated_labels->destructor();
-    free(this->generated_labels);
-
-    this->labels_to_fill->destructor();
-    free(this->labels_to_fill);
-
-    mprotect(buffer, this->jit_buffer_size, PROT_READ);
-
+    mprotect(buffer, this->buffer_size, PROT_READ); // Set read only  on memory to avoid accidental changing
 }
 
 
 
 
-void AST_tree::x86_fill_labels(){
+void Compiler::x86_fill_labels(){
     size_t count = this->labels_to_fill->size;
 
     label_pair curr = {};
@@ -229,7 +190,7 @@ void AST_tree::x86_fill_labels(){
 
 
 
-size_t AST_tree::x86_generate_code(char* line){
+size_t Compiler::x86_generate_code(char* line){
     this->scope = New_pages_list(); 
 
     size_t curr = this->root;
@@ -248,7 +209,7 @@ size_t AST_tree::x86_generate_code(char* line){
 
 
 
-void AST_tree::x86_generate_label(AST_tree::Tree_Node node, char* line){
+void Compiler::x86_generate_label(Compiler::Tree_Node node, char* line){
         size_t argc = nasm_get_func_argc(node.left);
         size_t offset = 0;
         char* label = (char*)calloc(256, sizeof(char));
@@ -265,12 +226,12 @@ void AST_tree::x86_generate_label(AST_tree::Tree_Node node, char* line){
 
 }
 
-size_t AST_tree::x86_generate_default_return(char* line){
+size_t Compiler::x86_generate_default_return(char* line){
     return x86_emit_ret(line);
 }
 
 
-void AST_tree::x86_get_function_arguments(size_t index){
+void Compiler::x86_get_function_arguments(size_t index){
     size_t curr = index;
     while(curr != 0){
         Tree_Node Link = get_node(curr);
@@ -283,7 +244,7 @@ void AST_tree::x86_get_function_arguments(size_t index){
 
 
 
-size_t AST_tree::x86_generate_function_code(size_t index, char* line){
+size_t Compiler::x86_generate_function_code(size_t index, char* line){
     this->scope->new_scope();
 
     Tree_Node func = get_node(index);
@@ -300,7 +261,7 @@ size_t AST_tree::x86_generate_function_code(size_t index, char* line){
 }
 
 
-size_t AST_tree::x86_generate_body_code(size_t index, char* line){
+size_t Compiler::x86_generate_body_code(size_t index, char* line){
     
     Tree_Node func = get_node(index);
     size_t offset = 0;
@@ -323,7 +284,7 @@ size_t AST_tree::x86_generate_body_code(size_t index, char* line){
 }
 
 
-size_t AST_tree::x86_generate_statement_code(size_t index, char* line){
+size_t Compiler::x86_generate_statement_code(size_t index, char* line){
     Tree_Node node = get_node(index);
     size_t offset = 0;
     switch(node.type){
@@ -353,7 +314,7 @@ size_t AST_tree::x86_generate_statement_code(size_t index, char* line){
 }
 
 
-size_t AST_tree::x86_generate_assignment(size_t index, char* line){
+size_t Compiler::x86_generate_assignment(size_t index, char* line){
     Tree_Node node = get_node(index);
     size_t offset = 0;
     
@@ -367,7 +328,7 @@ size_t AST_tree::x86_generate_assignment(size_t index, char* line){
     return offset;
 }
 
-size_t AST_tree::x86_generate_variable_declaration(size_t index, char* line){
+size_t Compiler::x86_generate_variable_declaration(size_t index, char* line){
     Tree_Node curr = get_node(index);
     this->scope->add_var(curr.u.line);
     size_t offset = 0;
@@ -386,7 +347,7 @@ size_t AST_tree::x86_generate_variable_declaration(size_t index, char* line){
 }
 
 
-size_t AST_tree::x86_generate_expression(size_t index, char* line){
+size_t Compiler::x86_generate_expression(size_t index, char* line){
     size_t off = 0;
     Tree_Node curr = get_node(index);
      switch(curr.type){
@@ -451,7 +412,7 @@ size_t AST_tree::x86_generate_expression(size_t index, char* line){
          }
 
          case READ:{
-            this->labels_to_fill->push_back({reserved_name_for_scanf, line + off + 1, 4});
+            this->labels_to_fill->push_back({reserved_name_for_scanf, line + off + 1, 4}); // call oprand size
             off += x86_emit_call(line + off);
             
             break;
@@ -473,7 +434,7 @@ size_t AST_tree::x86_generate_expression(size_t index, char* line){
     return off;
 }
 
-size_t AST_tree::x86_generate_standart_function(size_t index, char* line){
+size_t Compiler::x86_generate_standart_function(size_t index, char* line){
     Tree_Node curr = get_node(index);
     size_t offset = 0;
     switch((Node_type)curr.u.value){
@@ -490,7 +451,7 @@ size_t AST_tree::x86_generate_standart_function(size_t index, char* line){
 }
 
 
-size_t AST_tree::x86_generate_sqrt(size_t index, char* line){
+size_t Compiler::x86_generate_sqrt(size_t index, char* line){
     size_t offset = 0;
     size_t argc = nasm_get_func_argc(index);
     if(argc != 1){
@@ -500,13 +461,13 @@ size_t AST_tree::x86_generate_sqrt(size_t index, char* line){
     }
     offset+= x86_generate_expression(get_node(index).left, line);
 
-    this->labels_to_fill->push_back({reserved_name_for_sqrt, line + offset + 1, 4});
+    this->labels_to_fill->push_back({reserved_name_for_sqrt, line + offset + 1, 4}); //call operand size
     offset += x86_emit_call       (line + offset);
 
     return offset;
 }
 
-size_t AST_tree::x86_generate_write(size_t index, char* line){
+size_t Compiler::x86_generate_write(size_t index, char* line){
     size_t count = 0;
     size_t offset = 0;
     size_t off = 0;
@@ -516,7 +477,7 @@ size_t AST_tree::x86_generate_write(size_t index, char* line){
         offset += x86_generate_expression(curr.left, line+offset);
         
         offset += x86_emit_mov_r64_r64(line + offset, RDI, RAX);
-        this->labels_to_fill->push_back({reserved_name_for_printf, line + offset + 1, 4});
+        this->labels_to_fill->push_back({reserved_name_for_printf, line + offset + 1, 4}); //call operand size
         offset += x86_emit_call       (line + offset);   
 
         
@@ -527,7 +488,7 @@ size_t AST_tree::x86_generate_write(size_t index, char* line){
     return offset;
 }
 
-size_t AST_tree::x86_generate_binary_operator(size_t index, char* line){
+size_t Compiler::x86_generate_binary_operator(size_t index, char* line){
     size_t off = 0;
     Tree_Node curr = get_node(index);
 
@@ -569,7 +530,7 @@ size_t AST_tree::x86_generate_binary_operator(size_t index, char* line){
 
 
 
-size_t AST_tree::x86_generate_return(size_t index, char* line){
+size_t Compiler::x86_generate_return(size_t index, char* line){
     size_t offset = 0;
     Tree_Node curr = get_node(index);
     
@@ -582,19 +543,19 @@ size_t AST_tree::x86_generate_return(size_t index, char* line){
     return offset;
 }
 
-void AST_tree::x86_generate_label_call(AST_tree::Tree_Node node, char* line){
+void Compiler::x86_generate_label_call(Compiler::Tree_Node node, char* line){
         size_t argc = nasm_get_func_argc(node.left);
         size_t offset = 0;
         char* label = (char*)calloc(256, sizeof(char));
 
         sprintf(label,"%s%ld", node.u.line, argc);
 
-        this->labels_to_fill->push_back({label, line + 1, 4});
+        this->labels_to_fill->push_back({label, line + 1, 4}); //call operand size
 
         this->prts_for_free->push_back(label);
 }
 
-size_t AST_tree::x86_generate_func_arguments(size_t index, char* line){
+size_t Compiler::x86_generate_func_arguments(size_t index, char* line){
     
     size_t offset = 0;
 
@@ -613,7 +574,7 @@ size_t AST_tree::x86_generate_func_arguments(size_t index, char* line){
 }
 
 
-size_t AST_tree::x86_generate_function_call(size_t index, char* line){
+size_t Compiler::x86_generate_function_call(size_t index, char* line){
     Tree_Node curr = get_node(index); 
     size_t offset = 0;
 
@@ -641,7 +602,7 @@ size_t AST_tree::x86_generate_function_call(size_t index, char* line){
 
 
 
-size_t AST_tree::x86_generate_logic(size_t index, char* line){
+size_t Compiler::x86_generate_logic(size_t index, char* line){
     size_t off = 0;
     Tree_Node curr = get_node(index);
 
@@ -649,33 +610,33 @@ size_t AST_tree::x86_generate_logic(size_t index, char* line){
         case AND:{
 
             off += x86_emit_cmp_r64_imm (line + off, RAX, 0);
-            char* addr1_false_to_fill = line + off + 2;
+            char* addr1_false_to_fill = line + off + 2; // conditional jump size
             off += x86_emit_jxx         (line + off, JE);
 
             off += x86_emit_cmp_r64_imm (line + off, RBX, 0);
-            char* addr2_false_to_fill = line + off + 2;
+            char* addr2_false_to_fill = line + off + 2; // conditional jump size
             off += x86_emit_jxx         (line + off, JE);
 
             off += x86_emit_mov_r64_imm (line + off, RAX, maximum_of_fractional_part);
-            char* addr1_true_fill = line + off + 1;
+            char* addr1_true_fill = line + off + 1; // jump size
             off += x86_emit_jmp         (line + off);
 
-            fill_x_bytes(4, (line + off) - (addr1_false_to_fill + 4), addr1_false_to_fill);
-            fill_x_bytes(4, (line + off) - (addr2_false_to_fill + 4), addr2_false_to_fill);
+            fill_x_bytes(4, (line + off) - (addr1_false_to_fill + 4), addr1_false_to_fill); // "+ 4" is jmp operand size
+            fill_x_bytes(4, (line + off) - (addr2_false_to_fill + 4), addr2_false_to_fill); //
 
             off += x86_emit_xor_r64_r64(line + off, RAX, RAX);
 
-            fill_x_bytes(4, (line + off) - (addr1_true_fill + 4), addr1_true_fill);
+            fill_x_bytes(4, (line + off) - (addr1_true_fill + 4), addr1_true_fill); // "+ 4" is jmp operand size
 
 return off;
         }
         case OR:{
             off += x86_emit_cmp_r64_imm (line + off, RAX, 0);
-            char* addr1_true_to_fill = line + off + 2;
+            char* addr1_true_to_fill = line + off + 2;  // conditional jump size
             off += x86_emit_jxx         (line + off, JNE);
 
             off += x86_emit_cmp_r64_imm (line + off, RBX, 0);
-            char* addr2_true_to_fill = line + off + 2;
+            char* addr2_true_to_fill = line + off + 2;  // conditional jump size
             off += x86_emit_jxx         (line + off, JNE);
 
             off += x86_emit_xor_r64_r64(line + off, RAX, RAX);
@@ -683,11 +644,11 @@ return off;
             char* addr1_false_to_fill = line + off + 1;
             off += x86_emit_jmp         (line + off);
 
-            fill_x_bytes(4, (line + off) - (addr1_true_to_fill + 4), addr1_true_to_fill);
-            fill_x_bytes(4, (line + off) - (addr2_true_to_fill + 4), addr2_true_to_fill);
+            fill_x_bytes(4, (line + off) - (addr1_true_to_fill + 4), addr1_true_to_fill); // "+ 4" is jmp operand size
+            fill_x_bytes(4, (line + off) - (addr2_true_to_fill + 4), addr2_true_to_fill); // "+ 4" is jmp operand size
             off += x86_emit_mov_r64_imm (line + off, RAX, maximum_of_fractional_part);
 
-            fill_x_bytes(4, (line + off) - (addr1_false_to_fill + 4), addr1_false_to_fill);
+            fill_x_bytes(4, (line + off) - (addr1_false_to_fill + 4), addr1_false_to_fill); // "+ 4" is jmp operand size
 
 
             
@@ -699,7 +660,7 @@ return off;
     assert(0);
 }
 
-size_t AST_tree::x86_generate_logical_operator(size_t index, char* line){
+size_t Compiler::x86_generate_logical_operator(size_t index, char* line){
     size_t off = 0;
     Tree_Node curr = get_node(index);
 
@@ -737,26 +698,25 @@ size_t AST_tree::x86_generate_logical_operator(size_t index, char* line){
         }
     }
     off += x86_emit_cmp_r64_r64(line + off, RAX, RBX);
-    char* addr_to_fill_true = line + off + 2;
+    char* addr_to_fill_true = line + off + 2; // conditioan jump size
     off += x86_emit_jxx(line + off, cmp_type); 
 
     off += x86_emit_xor_r64_r64(line + off, RAX, RAX);
-    char* addr_to_fill_false = line + off + 1;
+    char* addr_to_fill_false = line + off + 1; // jmp size
 
     off += x86_emit_jmp(line + off);
 
-    fill_x_bytes(4, (line + off) - (addr_to_fill_true + 4), addr_to_fill_true);
+    fill_x_bytes(4, (line + off) - (addr_to_fill_true + 4), addr_to_fill_true); // "+ 4" is jmp operand size
 
     off += x86_emit_mov_r64_imm(line + off, RAX, maximum_of_fractional_part);
 
-    fill_x_bytes(4, (line + off) - (addr_to_fill_false + 4), addr_to_fill_false);
+    fill_x_bytes(4, (line + off) - (addr_to_fill_false + 4), addr_to_fill_false); // "+ 4" is jmp operand size
     
     return off;
 
-    
 }
 
-size_t AST_tree::x86_generate_body(size_t index, char* line){
+size_t Compiler::x86_generate_body(size_t index, char* line){
 
     size_t offset = 0;
     while(index != 0){
@@ -770,7 +730,7 @@ size_t AST_tree::x86_generate_body(size_t index, char* line){
 
 
 
-size_t AST_tree::x86_generate_condition(size_t index, char* line){
+size_t Compiler::x86_generate_condition(size_t index, char* line){
      Tree_Node curr = get_node(index);
     
     size_t offset = 0;
@@ -779,20 +739,20 @@ size_t AST_tree::x86_generate_condition(size_t index, char* line){
 
     offset += x86_generate_expression(curr.left, line+offset);
     offset += x86_emit_cmp_r64_imm(line + offset, RAX, 0);
-    char* addr_cnd_to_fill = line + offset + 2;
+    char* addr_cnd_to_fill = line + offset + 2; // conditional jump size
     offset += x86_emit_jxx(line + offset, JE);
 
     offset += x86_generate_body(right.left, line+offset);
     
-    char* addr_end_to_fill = line + offset + 1;    
-    offset += x86_emit_jmp(line + offset);
+    char* addr_end_to_fill = line + offset + 1; // jump size    
+    offset += x86_emit_jmp(line + offset); 
 
 
-    fill_x_bytes(4, (line + offset) - (addr_cnd_to_fill + 4), addr_cnd_to_fill);
+    fill_x_bytes(4, (line + offset) - (addr_cnd_to_fill + 4), addr_cnd_to_fill); // "+ 4" is jmp operand size
 
     offset +=x86_generate_body(right.right, line+offset);
 
-    fill_x_bytes(4, (line + offset) - (addr_end_to_fill + 4), addr_end_to_fill);
+    fill_x_bytes(4, (line + offset) - (addr_end_to_fill + 4), addr_end_to_fill); // "+ 4" is jmp operand size
 
  
     return offset;
@@ -800,7 +760,7 @@ size_t AST_tree::x86_generate_condition(size_t index, char* line){
 
 
 
-size_t AST_tree::x86_generate_loop(size_t index, char* line){
+size_t Compiler::x86_generate_loop(size_t index, char* line){
     Tree_Node curr = get_node(index);
     size_t offset = 0;
 
@@ -809,7 +769,7 @@ size_t AST_tree::x86_generate_loop(size_t index, char* line){
 
     offset += x86_emit_cmp_r64_imm(line + offset, RAX, 0);
 
-    char* addr_end_to_fill = line + offset + 2;
+    char* addr_end_to_fill = line + offset + 2; // conditional jump size
 
     offset += x86_emit_jxx(line + offset, JE);
 
@@ -817,9 +777,9 @@ size_t AST_tree::x86_generate_loop(size_t index, char* line){
 
     offset += x86_emit_jmp(line + offset);
 
-    fill_x_bytes(4, begin - (line + offset), line + offset - 4);
+    fill_x_bytes(4, begin - (line + offset), line + offset - 4); // jump operand size
 
-    fill_x_bytes(4, (line + offset) - (addr_end_to_fill + 4), addr_end_to_fill);
+    fill_x_bytes(4, (line + offset) - (addr_end_to_fill + 4), addr_end_to_fill); // "+ 4" is jmp operand size 
 
 
     return offset;

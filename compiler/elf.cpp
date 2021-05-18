@@ -1,16 +1,15 @@
 #pragma pack(push, 1)
-#include "tree.h"
+#include "compiler.h"
 #include <cstdlib>
 #include <elf.h>
 #include "elf.h"
 #include <sys/mman.h>
 
 
-void AST_tree::create_executable(const char* file){
-    mprotect(this->jit_buffer, this->jit_buffer_size, PROT_READ | PROT_WRITE);
+void Compiler::create_executable(const char* file){
 
     remove(file);
-    if(!this->jit_buffer){
+    if(!this->buffer){
         printf("Can't create executable, compile first\n");
         return;
 
@@ -24,8 +23,8 @@ void AST_tree::create_executable(const char* file){
 
     p_head.FLAGS = PF_R | PF_X | PF_W;
     p_head.OFFSET = sizeof(ELF_header) + sizeof(Programm_Header);
-    p_head.FILESZ = this->jit_buffer_size;
-    p_head.MEMSZ = this->jit_buffer_size;
+    p_head.FILESZ = this->buffer_size;
+    p_head.MEMSZ = this->buffer_size;
 
     FILE* fp = fopen(file, "wb");
     
@@ -33,16 +32,11 @@ void AST_tree::create_executable(const char* file){
     fwrite(&head, sizeof(ELF_header), 1, fp);
     fwrite(&p_head, sizeof(Programm_Header), 1, fp);
 
-    *(this->return_addr) = 0x90; //Expalin it //NOP
-
-    fwrite(this->jit_buffer, this->jit_buffer_size, 1, fp);
-
-    *(this->return_addr) = RET;
+    fwrite(this->buffer, this->buffer_size, 1, fp);
 
     chmod(file, 0b111101101);
 
     fclose(fp);
 
-    mprotect(this->jit_buffer, this->jit_buffer_size, PROT_READ);
 
 }

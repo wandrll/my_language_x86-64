@@ -66,6 +66,8 @@ const u_int16_t SYSCALL = 0x050f;
 
 const u_int8_t NOP = 0x90;
 
+const u_int8_t EXIT = 0x3c;
+
 // enum SSE_opcodes{
 //     CVTSI2SD = 
 //     CVTTSD@SI

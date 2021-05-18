@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "tree.h"
+#include "compiler.h"
 #include <cassert>
 #include <stdlib.h>
 #include "../list/list.hpp"
@@ -9,10 +9,10 @@
 #include <string.h>
 
 
-AST_tree::Tree_Node AST_tree::get_node(size_t index){
+Compiler::Tree_Node Compiler::get_node(size_t index){
     return this->list->get_value_by_index(index);
 }
-bool AST_tree::is_type(Node_type type){
+bool Compiler::is_type(Node_type type){
     if(list->get_value_by_index(this->current).type != type){
         return false;
     }else{
@@ -20,7 +20,7 @@ bool AST_tree::is_type(Node_type type){
     }
 }
 
-bool AST_tree::is_value(long long val){
+bool Compiler::is_value(long long val){
     if(list->get_value_by_index(this->current).u.value != val){
         return false;
     }else{
@@ -28,15 +28,15 @@ bool AST_tree::is_value(long long val){
     }
 }
 
-Node_type AST_tree::get_type(){
+Node_type Compiler::get_type(){
     return list->get_value_by_index(this->current).type;
 }
 
-long long AST_tree::get_value(){
+long long Compiler::get_value(){
     return list->get_value_by_index(this->current).u.value;
 }
 
-void AST_tree::require(size_t line, Node_type type){
+void Compiler::require(size_t line, Node_type type){
     if(!is_type(type)){
         printf("Line:: %ld  :what i want: %d    what i have:%d so get assert((\n",line,  type, list->get_value_by_index(this->current).type);
         fflush(stdout);
@@ -44,26 +44,26 @@ void AST_tree::require(size_t line, Node_type type){
     }
 }
 
-void AST_tree::left_connection(size_t son, size_t parent){
+void Compiler::left_connection(size_t son, size_t parent){
     Tree_Node tmp = this->list->get_value_by_index(parent);
     tmp.left = son;
     this->list->replace_value_by_index(parent, tmp);
 }
 
-void AST_tree::right_connection(size_t son, size_t parent){
+void Compiler::right_connection(size_t son, size_t parent){
     Tree_Node tmp = this->list->get_value_by_index(parent);
     tmp.right = son;
     this->list->replace_value_by_index(parent, tmp);
 }
 
-void AST_tree::change_type(size_t index, Node_type type){
+void Compiler::change_type(size_t index, Node_type type){
     Tree_Node tmp = this->list->get_value_by_index(index);
     tmp.type = type;
     this->list->replace_value_by_index(index, tmp);    
 }
 
 
-void AST_tree::change_value(size_t index, long long val){
+void Compiler::change_value(size_t index, long long val){
     Tree_Node tmp = this->list->get_value_by_index(index);
     tmp.u.value = val;
     this->list->replace_value_by_index(index, tmp);    
@@ -74,14 +74,14 @@ void AST_tree::change_value(size_t index, long long val){
     /////////////////////////////////////////////////////////////////////////////////////////
     /////////////////////////////////////////////////////////////////////////////////////////
 
-    size_t AST_tree::Get_grammar(){
+    size_t Compiler::Get_grammar(){
         this->current = 1;
         size_t res = Get_programm();
         require(__LINE__, END);
         return res; 
     }
 
-    size_t AST_tree::Get_programm(){
+    size_t Compiler::Get_programm(){
         size_t prev = Get_func_definition();
 
         Tree_Node tmp = {};
@@ -110,7 +110,7 @@ void AST_tree::change_value(size_t index, long long val){
         return res;
     }
 
-    size_t AST_tree::Get_func_definition(){
+    size_t Compiler::Get_func_definition(){
         require(__LINE__, DECLARATOR);
         this->current++;
         require(__LINE__, VARIABLE);
@@ -142,7 +142,7 @@ void AST_tree::change_value(size_t index, long long val){
         return curr;
     }
 
-    size_t AST_tree::Get_func_variables(){
+    size_t Compiler::Get_func_variables(){
         require(__LINE__, BRACKET_OP);
         this->current++;
 
@@ -182,12 +182,12 @@ void AST_tree::change_value(size_t index, long long val){
 
     }
 
-    size_t AST_tree::Get_variable(){
+    size_t Compiler::Get_variable(){
         this->current++;
         return this->current-1;
     }
 
-    size_t AST_tree::Get_variable_declaration(){
+    size_t Compiler::Get_variable_declaration(){
         require(__LINE__, DECLARATOR);
         this->current++;
         require(__LINE__, VARIABLE);
@@ -209,7 +209,7 @@ void AST_tree::change_value(size_t index, long long val){
         return result;
     }
 
-    size_t AST_tree::Get_operations(){
+    size_t Compiler::Get_operations(){
         require(__LINE__, SEPARATOR_OP);
         this->current++;
         size_t res = 0;
@@ -245,7 +245,7 @@ void AST_tree::change_value(size_t index, long long val){
         return res;
     }
 
-    size_t AST_tree::parse_variable_statement(){
+    size_t Compiler::parse_variable_statement(){
         size_t res = 0;
         this->current++;
         Node_type type2 = get_type();
@@ -270,7 +270,7 @@ void AST_tree::change_value(size_t index, long long val){
         return res;
     }
 
-    size_t AST_tree::Get_link_statement(){
+    size_t Compiler::Get_link_statement(){
         size_t res = 0;
         size_t curr = 0;
         Node_type type = get_type();
@@ -325,7 +325,7 @@ void AST_tree::change_value(size_t index, long long val){
 
    
 
-    size_t AST_tree::Get_loop(){
+    size_t Compiler::Get_loop(){
         require(__LINE__,LOOP);
         size_t res = this->current;
         this->current++;
@@ -347,7 +347,7 @@ void AST_tree::change_value(size_t index, long long val){
 
     }
 
-    size_t AST_tree::Get_condition(){
+    size_t Compiler::Get_condition(){
 
         require(__LINE__,CONDITION);
         size_t res = this->current;
@@ -382,7 +382,7 @@ void AST_tree::change_value(size_t index, long long val){
 
     }
 
-    size_t AST_tree::copy_with_str(size_t index){
+    size_t Compiler::copy_with_str(size_t index){
         Tree_Node tmp = get_node(index);
 
         char* line = tmp.u.line;
@@ -397,7 +397,7 @@ void AST_tree::change_value(size_t index, long long val){
         return this->list->size;
     }
 
-    size_t AST_tree::Get_unary_op(){
+    size_t Compiler::Get_unary_op(){
         size_t left = this->current;
         this->current++;
 
@@ -430,7 +430,7 @@ void AST_tree::change_value(size_t index, long long val){
 
 
 
-    size_t AST_tree::Get_assignment(){
+    size_t Compiler::Get_assignment(){
         size_t left = this->current;
         require(__LINE__, VARIABLE);
         this->current++;
@@ -445,7 +445,7 @@ void AST_tree::change_value(size_t index, long long val){
     }
 
 
-    size_t AST_tree::Get_standart_function(){
+    size_t Compiler::Get_standart_function(){
         require(__LINE__, STANDART_FUNCTION);
         size_t res = this->current;
         this->current++;
@@ -456,7 +456,7 @@ void AST_tree::change_value(size_t index, long long val){
     }
 
 
-    size_t AST_tree::Get_return(){
+    size_t Compiler::Get_return(){
         require(__LINE__, RETURN);
         size_t res = this->current;
         this->current++;
@@ -466,7 +466,7 @@ void AST_tree::change_value(size_t index, long long val){
         return res;
     }
 
-    size_t AST_tree::Get_expression(){
+    size_t Compiler::Get_expression(){
         size_t prev = Get_logic_expression();
         while(is_type(LOGIC) ){
             // printf("okkkkkkkkkk\n");
@@ -483,7 +483,7 @@ void AST_tree::change_value(size_t index, long long val){
         return prev;
     }
 
-    size_t AST_tree::Get_logic_expression(){
+    size_t Compiler::Get_logic_expression(){
         size_t prev = Get_part_of_expression();
         while(is_type(LOGIC_OP) ){
             // printf("okkkkkkkkkk\n");
@@ -500,7 +500,7 @@ void AST_tree::change_value(size_t index, long long val){
         return prev;
     }
 
-    size_t AST_tree::Get_part_of_expression(){
+    size_t Compiler::Get_part_of_expression(){
         size_t prev = Get_term();
         while(is_type(BINARY_OP) && (is_value(PLUS) || is_value(MINUS))){
             // printf("okkkkkkkkkk\n");
@@ -516,7 +516,7 @@ void AST_tree::change_value(size_t index, long long val){
 
 
 
-    size_t AST_tree::Get_term(){
+    size_t Compiler::Get_term(){
         size_t prev = Get_power();
         while(is_type(BINARY_OP) && (is_value(MUL) || is_value(DIV))){
             // printf("okkkkkkkkkk\n");
@@ -532,7 +532,7 @@ void AST_tree::change_value(size_t index, long long val){
         return prev;
     }
 
-    size_t AST_tree::Get_power(){
+    size_t Compiler::Get_power(){
         size_t prev = Get_unar();
         while(is_type(BINARY_OP) && is_value(POW)){
             // printf("okkkkkkkkkk\n");
@@ -551,7 +551,7 @@ void AST_tree::change_value(size_t index, long long val){
 
 
 
-    size_t AST_tree::Get_unar(){
+    size_t Compiler::Get_unar(){
 
         bool flag = false;
         size_t res = 0;
@@ -587,7 +587,7 @@ void AST_tree::change_value(size_t index, long long val){
     }
 
 
-    size_t AST_tree::Get_primary_expression(){
+    size_t Compiler::Get_primary_expression(){
         Node_type type = get_type();
         switch(type){
             case BRACKET_OP:{
@@ -627,13 +627,13 @@ void AST_tree::change_value(size_t index, long long val){
         assert(0);
     }
 
-    size_t AST_tree::Get_read(){
+    size_t Compiler::Get_read(){
         require(__LINE__,READ);
         this->current++;
         return this->current-1;
     }
 
-    size_t AST_tree::Get_function_call(){
+    size_t Compiler::Get_function_call(){
         size_t res = this->current;
         this->current++;
         change_type(res, FUNCTION_CALL);
@@ -651,7 +651,7 @@ void AST_tree::change_value(size_t index, long long val){
         return res;
     }
 
-    size_t AST_tree::Get_expression_args(){
+    size_t Compiler::Get_expression_args(){
         require(__LINE__, BRACKET_OP);
         this->current++;
 
@@ -702,7 +702,7 @@ void AST_tree::change_value(size_t index, long long val){
 
 
 
-    size_t AST_tree::nasm_get_func_argc(size_t index){
+    size_t Compiler::nasm_get_func_argc(size_t index){
         size_t count = 0;
         while(index != 0){
             count++;

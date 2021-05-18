@@ -6,7 +6,7 @@ Let discr_sqare(a, b, c){
 Let linear_equation(b, c){
     Assuming_that(b == 0){
         Assuming_that(c==0){
-            Return 1/0;
+            Return 9999;
         }Otherwise{
             Return 0;
         }
