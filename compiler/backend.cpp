@@ -127,7 +127,7 @@ void Compiler::x86_compiler_backend(){
 
     offset += x86_emit_push(buffer + offset, RBX);
 
-    this->labels_to_fill->push_back({reserved_name_for_main_func, buffer + offset + 1, 4}); // call operand size
+    this->labels_to_fill->push_back({reserved_name_for_main_func, buffer + offset + 1, 4}); // "4" is call operand size
     offset += x86_emit_call(buffer + offset);
 
     offset += x86_emit_pop(buffer + offset, RBX);
@@ -412,7 +412,7 @@ size_t Compiler::x86_generate_expression(size_t index, char* line){
          }
 
          case READ:{
-            this->labels_to_fill->push_back({reserved_name_for_scanf, line + off + 1, 4}); // call oprand size
+            this->labels_to_fill->push_back({reserved_name_for_scanf, line + off + 1, 4}); // "4" is call oprand size
             off += x86_emit_call(line + off);
             
             break;
@@ -461,7 +461,7 @@ size_t Compiler::x86_generate_sqrt(size_t index, char* line){
     }
     offset+= x86_generate_expression(get_node(index).left, line);
 
-    this->labels_to_fill->push_back({reserved_name_for_sqrt, line + offset + 1, 4}); //call operand size
+    this->labels_to_fill->push_back({reserved_name_for_sqrt, line + offset + 1, 4}); // "4" is call operand size
     offset += x86_emit_call       (line + offset);
 
     return offset;
@@ -477,7 +477,7 @@ size_t Compiler::x86_generate_write(size_t index, char* line){
         offset += x86_generate_expression(curr.left, line+offset);
         
         offset += x86_emit_mov_r64_r64(line + offset, RDI, RAX);
-        this->labels_to_fill->push_back({reserved_name_for_printf, line + offset + 1, 4}); //call operand size
+        this->labels_to_fill->push_back({reserved_name_for_printf, line + offset + 1, 4}); // "4" is call operand size
         offset += x86_emit_call       (line + offset);   
 
         
@@ -550,7 +550,7 @@ void Compiler::x86_generate_label_call(Compiler::Tree_Node node, char* line){
 
         sprintf(label,"%s%ld", node.u.line, argc);
 
-        this->labels_to_fill->push_back({label, line + 1, 4}); //call operand size
+        this->labels_to_fill->push_back({label, line + 1, 4}); // "4" is call operand size
 
         this->prts_for_free->push_back(label);
 }
@@ -610,15 +610,15 @@ size_t Compiler::x86_generate_logic(size_t index, char* line){
         case AND:{
 
             off += x86_emit_cmp_r64_imm (line + off, RAX, 0);
-            char* addr1_false_to_fill = line + off + 2; // conditional jump size
+            char* addr1_false_to_fill = line + off + 2; // "2" is  conditional jump size
             off += x86_emit_jxx         (line + off, JE);
 
             off += x86_emit_cmp_r64_imm (line + off, RBX, 0);
-            char* addr2_false_to_fill = line + off + 2; // conditional jump size
+            char* addr2_false_to_fill = line + off + 2; // "2" is  conditional jump size
             off += x86_emit_jxx         (line + off, JE);
 
             off += x86_emit_mov_r64_imm (line + off, RAX, maximum_of_fractional_part);
-            char* addr1_true_fill = line + off + 1; // jump size
+            char* addr1_true_fill = line + off + 1; // "1" is  jump size
             off += x86_emit_jmp         (line + off);
 
             fill_x_bytes(4, (line + off) - (addr1_false_to_fill + 4), addr1_false_to_fill); // "+ 4" is jmp operand size
@@ -632,16 +632,16 @@ return off;
         }
         case OR:{
             off += x86_emit_cmp_r64_imm (line + off, RAX, 0);
-            char* addr1_true_to_fill = line + off + 2;  // conditional jump size
+            char* addr1_true_to_fill = line + off + 2;  // "2" is  conditional jump size
             off += x86_emit_jxx         (line + off, JNE);
 
             off += x86_emit_cmp_r64_imm (line + off, RBX, 0);
-            char* addr2_true_to_fill = line + off + 2;  // conditional jump size
+            char* addr2_true_to_fill = line + off + 2;  // "2" is  conditional jump size
             off += x86_emit_jxx         (line + off, JNE);
 
             off += x86_emit_xor_r64_r64(line + off, RAX, RAX);
 
-            char* addr1_false_to_fill = line + off + 1;
+            char* addr1_false_to_fill = line + off + 1; //  "4" is  jmp size
             off += x86_emit_jmp         (line + off);
 
             fill_x_bytes(4, (line + off) - (addr1_true_to_fill + 4), addr1_true_to_fill); // "+ 4" is jmp operand size
@@ -698,11 +698,11 @@ size_t Compiler::x86_generate_logical_operator(size_t index, char* line){
         }
     }
     off += x86_emit_cmp_r64_r64(line + off, RAX, RBX);
-    char* addr_to_fill_true = line + off + 2; // conditioan jump size
+    char* addr_to_fill_true = line + off + 2; //  "2" is conditioan jump size
     off += x86_emit_jxx(line + off, cmp_type); 
 
     off += x86_emit_xor_r64_r64(line + off, RAX, RAX);
-    char* addr_to_fill_false = line + off + 1; // jmp size
+    char* addr_to_fill_false = line + off + 1; //  "1" is jmp size
 
     off += x86_emit_jmp(line + off);
 
@@ -739,12 +739,12 @@ size_t Compiler::x86_generate_condition(size_t index, char* line){
 
     offset += x86_generate_expression(curr.left, line+offset);
     offset += x86_emit_cmp_r64_imm(line + offset, RAX, 0);
-    char* addr_cnd_to_fill = line + offset + 2; // conditional jump size
+    char* addr_cnd_to_fill = line + offset + 2; //  "2" is conditional jump size
     offset += x86_emit_jxx(line + offset, JE);
 
     offset += x86_generate_body(right.left, line+offset);
     
-    char* addr_end_to_fill = line + offset + 1; // jump size    
+    char* addr_end_to_fill = line + offset + 1; //  "1" is jump size    
     offset += x86_emit_jmp(line + offset); 
 
 
@@ -769,7 +769,7 @@ size_t Compiler::x86_generate_loop(size_t index, char* line){
 
     offset += x86_emit_cmp_r64_imm(line + offset, RAX, 0);
 
-    char* addr_end_to_fill = line + offset + 2; // conditional jump size
+    char* addr_end_to_fill = line + offset + 2; //  "2" is conditional jump size
 
     offset += x86_emit_jxx(line + offset, JE);
 
@@ -777,9 +777,9 @@ size_t Compiler::x86_generate_loop(size_t index, char* line){
 
     offset += x86_emit_jmp(line + offset);
 
-    fill_x_bytes(4, begin - (line + offset), line + offset - 4); // jump operand size
+    fill_x_bytes(4, begin - (line + offset), line + offset - 4); //  "4" is jump operand size
 
-    fill_x_bytes(4, (line + offset) - (addr_end_to_fill + 4), addr_end_to_fill); // "+ 4" is jmp operand size 
+    fill_x_bytes(4, (line + offset) - (addr_end_to_fill + 4), addr_end_to_fill); //git "+ 4" is jmp operand size 
 
 
     return offset;
