@@ -22,7 +22,7 @@ There are only 4 ways how you can run this programm:
 ```sh
 ./comp input
 ```
-It generetes file with  name "a.myasm"
+It generetes file with  name "res"
 
 2.
 ```sh
@@ -34,7 +34,7 @@ It generetes file with name output
 ```sh
 ./comp input -d
 ```
-It generetes file with  name "a.myasm" and create dump of AST-tree in file result.pdf
+It generetes file with  name "res" and create dump of AST-tree in file result.pdf
 
 
 4.
